@@ -770,11 +770,11 @@ namespace CACrypto.Commons
         {
             var currentProjectName = System.Reflection.Assembly.GetCallingAssembly().GetName().Name;
             var currentDirectory = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
-            while (currentDirectory.Name != currentProjectName)
+            while (currentDirectory is not null && currentDirectory.Name != currentProjectName)
             {
                 currentDirectory = currentDirectory.Parent;
             }
-            return currentDirectory.FullName;
+            return currentDirectory?.FullName ?? string.Empty;
         }
 
         public static void SetBit(byte[] self, int index, bool value)

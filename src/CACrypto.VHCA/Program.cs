@@ -1,4 +1,5 @@
 ﻿using CACrypto.Commons;
+using CACrypto.VHCA;
 using System;
 using System.Text;
 
@@ -15,14 +16,14 @@ namespace VHCA_Crypto
             Console.WriteLine($"- Non-Padded Plaintext Bytes: {BitConverter.ToString(plaintextBytes)}");
 
             var blockSize = plaintextBytes.Length;
-            var cryptoKey = VHCACryptoKey.GenerateRandomKey(blockSize);
+            var cryptoKey = VHCAKey.GenerateRandomKey(blockSize);
 
-            var initializationVector = Util.GetSecureRandomByteArray(VHCA.BlockSizeInBytes / 2);
+            var initializationVector = Util.GetSecureRandomByteArray(VHCACrypto.BlockSizeInBytes / 2);
 
-            var ciphertext = VHCA.BlockEncrypt(plaintextBytes, cryptoKey);
+            var ciphertext = VHCACrypto.BlockEncrypt(plaintextBytes, cryptoKey);
             Console.WriteLine($"- Ciphertext Bytes: {BitConverter.ToString(ciphertext)}");
 
-            var decryptedPlaintext = VHCA.BlockDecrypt(ciphertext, cryptoKey);
+            var decryptedPlaintext = VHCACrypto.BlockDecrypt(ciphertext, cryptoKey);
 
             var recoveredString = Encoding.ASCII.GetString(decryptedPlaintext).TrimEnd('\0');
             Console.WriteLine($"- Deciphered Plaintext: {recoveredString}");
