@@ -1,6 +1,4 @@
 ﻿using CACrypto.Commons;
-using System;
-using System.IO;
 
 namespace CACrypto.VHCA;
 
@@ -8,14 +6,19 @@ public class VHCAProxy : PermutiveCACryptoMethodBase
 {
     public VHCAProxy() : base(algorithmName: "VHCA") { }
 
+    protected override PermutiveCACryptoKey GenerateRandomKey(int blockSizeInBytes, ToggleDirection toggleDirection)
+    {
+        return VHCAKey.GenerateRandomKey(blockSizeInBytes, toggleDirection);
+    }
+
     public override byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
     {
-        return VHCACrypto.BlockEncrypt(initialLattice, mainRules, borderRules, iterations: VHCACrypto.BlockSizeInBits);
+        return VHCACrypto.BlockEncrypt(initialLattice, mainRules, borderRules);
     }
 
     public override byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules)
     {
-        return VHCACrypto.BlockDecrypt(cipherText, mainRules, borderRules, iterations: VHCACrypto.BlockSizeInBits);
+        return VHCACrypto.BlockDecrypt(cipherText, mainRules, borderRules);
     }
 
     public override Rule[] DeriveMainRulesFromKey(PermutiveCACryptoKey cryptoKey)

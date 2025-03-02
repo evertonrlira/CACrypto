@@ -1,33 +1,32 @@
 ﻿using CACrypto.Commons;
-using CACrypto.VHCA;
 using System;
 using System.Text;
 
-namespace VHCA_Crypto
+namespace CACrypto.VHCA;
+
+class Program
 {
-    class Program
+    static void Main()
     {
-        static void Main()
-        {
-            var plaintextString = "Avocado is a delicious and nutritive fruit.";
-            Console.WriteLine($"- Original Plaintext: {plaintextString}");
+        var cryptoMethod = new VHCAProxy();
 
-            var plaintextBytes = Encoding.ASCII.GetBytes(plaintextString);
-            Console.WriteLine($"- Non-Padded Plaintext Bytes: {BitConverter.ToString(plaintextBytes)}");
+        var plaintextString = "Avocado is a delicious and nutritive fruit.";
+        Console.WriteLine($"- Original Plaintext: {plaintextString}");
 
-            var blockSize = plaintextBytes.Length;
-            var cryptoKey = VHCAKey.GenerateRandomKey(blockSize);
+        var plaintextBytes = Encoding.ASCII.GetBytes(plaintextString);
+        Console.WriteLine($"- Non-Padded Plaintext Bytes: {BitConverter.ToString(plaintextBytes)}");
 
-            var initializationVector = Util.GetSecureRandomByteArray(VHCACrypto.BlockSizeInBytes / 2);
+        var cryptoKey = cryptoMethod.GenerateRandomGenericKey();
 
-            var ciphertext = VHCACrypto.BlockEncrypt(plaintextBytes, cryptoKey);
-            Console.WriteLine($"- Ciphertext Bytes: {BitConverter.ToString(ciphertext)}");
+        var initializationVector = Util.GetSecureRandomByteArray(cryptoMethod.GetDefaultBlockSizeInBytes() / 2);
 
-            var decryptedPlaintext = VHCACrypto.BlockDecrypt(ciphertext, cryptoKey);
+        var ciphertext = cryptoMethod.Encrypt(plaintextBytes, cryptoKey, initializationVector);
+        Console.WriteLine($"- Ciphertext Bytes: {BitConverter.ToString(ciphertext)}");
 
-            var recoveredString = Encoding.ASCII.GetString(decryptedPlaintext).TrimEnd('\0');
-            Console.WriteLine($"- Deciphered Plaintext: {recoveredString}");
-            Console.ReadKey();
-        }
+        var decryptedPlaintext = cryptoMethod.Decrypt(ciphertext, cryptoKey, initializationVector);
+
+        var recoveredString = Encoding.ASCII.GetString(decryptedPlaintext).TrimEnd('\0');
+        Console.WriteLine($"- Deciphered Plaintext: {recoveredString}");
+        Console.ReadKey();
     }
 }

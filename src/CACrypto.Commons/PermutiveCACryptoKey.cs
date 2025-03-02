@@ -1,6 +1,8 @@
-﻿namespace CACrypto.Commons
+﻿using System.Security.Cryptography;
+
+namespace CACrypto.Commons
 {
-    public class PermutiveCACryptoKey : CryptoKeyBase
+    public abstract class PermutiveCACryptoKey : CryptoKeyBase
     {
         public ToggleDirection Direction { get; set; }
 
@@ -13,5 +15,7 @@
         {
             Direction = toggleDirection;
         }
+
+        public abstract bool IsValid();
     }
 }

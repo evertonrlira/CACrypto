@@ -19,10 +19,10 @@ public class MethodsBenchmarker
     public void Setup()
     {
         _plaintextBytes = Encoding.ASCII.GetBytes("Avocado is a delicious and nutritive fruit.");
-        _hcaKey = HCAKey.GenerateRandomKey();
         _hca = new HCAProxy();
-        _vhcaKey = VHCAKey.GenerateRandomKey();
+        _hcaKey = (HCAKey)_hca.GenerateRandomGenericKey();
         _vhca = new VHCAProxy();
+        _vhcaKey = (VHCAKey)_vhca.GenerateRandomGenericKey();
     }
 
     [Benchmark]

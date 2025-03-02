@@ -14,11 +14,6 @@ public class VHCACrypto
     private static readonly int DoubleRadius = 2;
     private static readonly int BinaryCutMask = 0x7FFFFFFF >> 30 - DoubleRadius;
 
-    public static VHCAKey GenerateRandomKey(int blockSize, ToggleDirection toggleDirection)
-    {
-        return VHCAKey.GenerateRandomKey(blockSize, toggleDirection);
-    }
-
     public static Rule[] DeriveMainRulesFromKey(int[] keyBits, ToggleDirection direction)
     {
         var mainRules = new Rule[keyBits.Length / KeyBitsToRuleFactor];
@@ -59,13 +54,14 @@ public class VHCACrypto
         Rule[] mainRules = DeriveMainRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
         Rule[] borderRules = DeriveBorderRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
 
-        return BlockEncrypt(plainText, mainRules, borderRules, iterations: 8 * plainText.Length);
+        return BlockEncrypt(plainText, mainRules, borderRules);
     }
 
-    public static byte[] BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, int iterations)
+    public static byte[] BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
     {
         int[] preImage = Util.ByteArrayToBinaryArray(initialLattice);
         int latticeLength = preImage.Length;
+        int iterations = latticeLength;
         int[] image = new int[latticeLength];
         int[] finalLattice;
         int[] swapAux;
@@ -133,13 +129,14 @@ public class VHCACrypto
         Rule[] mainRules = DeriveMainRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
         Rule[] borderRules = DeriveBorderRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
 
-        return BlockDecrypt(cipherText, mainRules, borderRules, iterations: 8 * cipherText.Length);
+        return BlockDecrypt(cipherText, mainRules, borderRules);
     }
 
-    public static byte[] BlockDecrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, int iterations)
+    public static byte[] BlockDecrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
     {
         int[] image = Util.ByteArrayToBinaryArray(initialLattice);
         int latticeLength = image.Length;
+        int iterations = latticeLength;
         int[] preImage = new int[image.Length];
         int[] finalLattice;
         int[] swapAux;

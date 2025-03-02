@@ -1,11 +1,15 @@
 ﻿using CACrypto.Commons;
-using System.Security.Cryptography;
 
 namespace CACrypto.HCA;
 
 public class HCAProxy : PermutiveCACryptoMethodBase
 {
     public HCAProxy() : base(algorithmName: "HCA") { }
+
+    protected override PermutiveCACryptoKey GenerateRandomKey(int blockSizeInBytes, ToggleDirection toggleDirection)
+    {
+        return HCAKey.GenerateRandomKey(blockSizeInBytes, toggleDirection);
+    }
 
     public override Rule[] DeriveMainRulesFromKey(PermutiveCACryptoKey cryptoKey)
     {

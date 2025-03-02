@@ -70,6 +70,6 @@ public static class AutomatedNIST
                 Console.WriteLine("TEST " + (test + 1) + ": " + (((float)successCountArray[test] / (float)options.inputFilesCount) * 100.0f).ToString("N2", culture.NumberFormat) + "%");
             }
         }
-        return successCountArray.Select(i => ((float)i / (float)options.inputFilesCount) * 100.0f).ToArray();
+        //return successCountArray.Select(i => ((float)i / (float)options.inputFilesCount) * 100.0f).ToArray();
     }
 }

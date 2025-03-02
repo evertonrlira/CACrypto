@@ -28,7 +28,7 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        Parallel.For(0, blockCount, (blockIdx) =>
+        Parallel.For(0, blockCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (blockIdx) =>
         {
             var newBlock = new byte[blockSize];
             Buffer.BlockCopy(plainText, blockIdx * blockSize, newBlock, 0, blockSize);
@@ -78,7 +78,7 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
 
         var cipherText = new Byte[paddedPlaintext.Length];
 
-        Parallel.For(0, blockCount, (counterIdx) =>
+        Parallel.For(0, blockCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (counterIdx) =>
         {
             var input = new Byte[blockSize];
             BinaryPrimitives.WriteInt64BigEndian(input, counterIdx);
@@ -118,7 +118,7 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        Parallel.For(0, blockCount, new ParallelOptions() { MaxDegreeOfParallelism = 2 }, (blockIdx) =>
+        Parallel.For(0, blockCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (blockIdx) =>
         {
             var newBlock = new byte[blockSize];
             Buffer.BlockCopy(cipherText, blockIdx * blockSize, newBlock, 0, blockSize);
@@ -137,7 +137,7 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        Parallel.For(0, blockCount, new ParallelOptions() { MaxDegreeOfParallelism = 2 }, (blockIdx) =>
+        Parallel.For(0, blockCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (blockIdx) =>
         {
             var newBlock = new byte[blockSize];
             Buffer.BlockCopy(cipherText, blockIdx * blockSize, newBlock, 0, blockSize);
@@ -169,11 +169,17 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
         return Encrypt_CTR(cipherText, cryptoKey, initializationVector);
     }
 
+    protected abstract PermutiveCACryptoKey GenerateRandomKey(int blockSizeInBytes, ToggleDirection toggleDirection);
     public PermutiveCACryptoKey GenerateRandomGenericKey(int? blockSizeInBytes = null, ToggleDirection? toggleDirection = null)
     {
         blockSizeInBytes ??= GetDefaultBlockSizeInBytes();
         toggleDirection ??= Util.GetRandomToggleDirection();
-        return GenerateRandomGenericKey(blockSizeInBytes, toggleDirection);
+        var key = GenerateRandomKey(blockSizeInBytes.Value, toggleDirection.Value);
+        while (!key.IsValid())
+        {
+            key = GenerateRandomKey(blockSizeInBytes.Value, toggleDirection.Value);
+        }
+        return key;
     }
 
     public abstract byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules);

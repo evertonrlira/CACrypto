@@ -45,7 +45,7 @@ public abstract class CryptoMethodBase(string algorithmName)
             fileBag = new ConcurrentBag<string>();
         }
 
-        Parallel.For(0, fileCount, (index) =>
+        Parallel.For(0, fileCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (index) =>
         {
             var newFilePath = GenerateBinaryFile(sequenceSize, outputDir);
             fileBag.Add(newFilePath);

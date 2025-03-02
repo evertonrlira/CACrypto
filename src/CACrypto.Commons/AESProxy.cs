@@ -43,7 +43,7 @@ public class AESProxy : CryptoMethodBase
             Directory.CreateDirectory(dirCombined);
 
         var fileBag = new ConcurrentBag<string>();
-        Parallel.For(0, howManySequences, new ParallelOptions() { MaxDegreeOfParallelism = 10 }, (index) =>
+        Parallel.For(0, howManySequences, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (index) =>
         {
             using (var newFile = File.Create(string.Format("{0}.bin", Path.Combine(dirCombined, Path.GetRandomFileName()))))
             {
