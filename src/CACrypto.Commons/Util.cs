@@ -1,4 +1,5 @@
 ﻿using MersenneTwister;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace CACrypto.Commons
@@ -47,7 +48,7 @@ namespace CACrypto.Commons
             return octalArray.Select(octal => directedRules[octal]).ToArray();
         }
 
-        public static byte[] DeepClone(byte[] oldArray)
+        public static byte[] CloneByteArray(byte[] oldArray)
         {
             var newArray = new byte[oldArray.Length];
             Buffer.BlockCopy(oldArray, 0, newArray, 0, oldArray.Length);
@@ -167,7 +168,7 @@ namespace CACrypto.Commons
 
         public static byte[] ChangeRandomBit(byte[] originalArray, bool changeOriginal = false)
         {
-            var newArray = changeOriginal ? originalArray : Util.DeepClone(originalArray);
+            var newArray = changeOriginal ? originalArray : Util.CloneByteArray(originalArray);
 
             var randomBitIdx = Util.GetRandomNumber(0, 8 * (originalArray.Length));
             ToggleBit(newArray, randomBitIdx);
@@ -807,6 +808,54 @@ namespace CACrypto.Commons
         public static ToggleDirection GetRandomToggleDirection()
         {
             return (ToggleDirection)Enum.ToObject(typeof(ToggleDirection), Util.GetRandomNumber(0, 2));
+        }
+
+        public static void DisplayMetricsForDisturbanceSet(ConcurrentBag<byte[]> disturbanceSet, bool writeToConsole = true)
+        {
+            var sequenceLengthInBits = 8 * disturbanceSet.First().Length;
+
+            double avgBitsSum = 0.0D, avgBitsStdDevSum = 0.0D, entrophyMinSum = 0.0D, entrophyMaxSum = 0.0D, entrophyAvgSum = 0.0D, entrophyStdDevSum = 0.0D;
+
+
+            var distribution = disturbanceSet.Select(Z => (float)Util.CountBits(Z) * 100.0F / (float)sequenceLengthInBits);
+
+            var avgBits = distribution.Average(); avgBitsSum += avgBits;
+
+
+            var culture = System.Globalization.CultureInfo.CreateSpecificCulture("en-US");
+            if (writeToConsole)
+            {
+                Console.WriteLine("- DISTURBED BITS PCT (AVG): {0}", avgBits.ToString("N3", culture.NumberFormat));
+            }
+
+            var avgBitsStdDev = Util.PopulationStandardDeviation(distribution); avgBitsStdDevSum += avgBitsStdDev;
+            if (writeToConsole)
+            {
+                Console.WriteLine("- DISTURBED BITS PCT (STD DEV): {0}", avgBitsStdDev.ToString("N3", culture.NumberFormat));
+            }
+
+            var entrophySet = disturbanceSet.Select(Z => Util.SpatialEntropyCalculusForBinary(Util.ByteArrayToBinaryArray(Z)));
+            var entrophyMin = entrophySet.Min(); entrophyMinSum += entrophyMin;
+            if (writeToConsole)
+            {
+                Console.WriteLine("- ENTROPY MIN: {0}", entrophyMin.ToString("N3", culture.NumberFormat));
+            }
+            var entrophyMax = entrophySet.Max(); entrophyMaxSum += entrophyMax;
+            if (writeToConsole)
+            {
+                Console.WriteLine("- ENTROPY MAX: {0}", entrophyMax.ToString("N3", culture.NumberFormat));
+            }
+            var entrophyAvg = entrophySet.Average(); entrophyAvgSum += entrophyAvg;
+            if (writeToConsole)
+            {
+                Console.WriteLine("- ENTROPY AVG: {0}", entrophyAvg.ToString("N3", culture.NumberFormat));
+            }
+            var entrophyStdDev = Util.PopulationStandardDeviation(entrophySet); entrophyStdDevSum += entrophyStdDev;
+            if (writeToConsole)
+            {
+                Console.WriteLine("- ENTROPY STD DEV: {0}", entrophyStdDev.ToString("N3", culture.NumberFormat));
+                Console.WriteLine();
+            }
         }
     }
 }

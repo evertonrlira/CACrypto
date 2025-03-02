@@ -1,76 +1,69 @@
 ﻿using System.Collections.Concurrent;
 
-namespace CACrypto.Commons
+namespace CACrypto.Commons;
+
+public abstract class CryptoMethodBase(string algorithmName)
 {
-    public abstract class CryptoMethodBase
+    public string AlgorithmName { get; init; } = algorithmName;
+
+    public string GetMethodName() => AlgorithmName;
+    public string GetFolderNameForGeneratedFiles() => AlgorithmName;
+    public abstract int GetDefaultBlockSizeInBits();
+    public abstract int GetDefaultBlockSizeInBytes();
+
+    public string GenerateBinaryFile(int sequenceSizeInBytes, string outputDir = ".\\")
     {
-        public abstract string GetMethodName();
-        public abstract string GetFolderNameForGeneratedFiles();
-        public abstract int GetDefaultBlockSizeInBits();
-        public abstract int GetDefaultBlockSizeInBytes();
+        string methodOutputFolder = GetOutputFolderForMethod(outputDir);
 
-        //public abstract byte[] Encrypt(byte[] plainText, CACryptoKey cryptoKey, byte[] initializationVector, CipherMode cipherMode = CipherMode.CBC);
+        string binaryFilePath = string.Format("{0}.bin", Path.Combine(methodOutputFolder, Path.GetRandomFileName()));
+        var generatedContent = GeneratePseudoRandomSequence(sequenceSizeInBytes);
+        File.WriteAllBytes(binaryFilePath, generatedContent);
+        return binaryFilePath;
+    }
 
-        //public abstract byte[] Decrypt(byte[] cipherText, CACryptoKey cryptoKey, byte[] initializationVector, CipherMode cipherMode = CipherMode.CBC);
+    public IEnumerable<string> GenerateBinaryFiles(int sequenceSize, int fileCount = 1, string outputDir = ".\\", bool considerPreexistingFiles = true)
+    {
+        string methodOutputFolder = GetOutputFolderForMethod(outputDir);
 
-        //public abstract CACryptoKey GenerateRandomGenericKey(int blockSizeInBits);
-
-        //public abstract byte[] EncryptAsSingleBlock(byte[] plainText, CACryptoKey cryptoKey);
-
-        public string GenerateBinaryFile(int sequenceSizeInBytes, string outputDir = ".\\")
+        ConcurrentBag<string> fileBag;
+        if (considerPreexistingFiles)
         {
-            string methodOutputFolder = GetOutputFolderForMethod(outputDir);
-
-            string binaryFilePath = string.Format("{0}.bin", Path.Combine(methodOutputFolder, Path.GetRandomFileName()));
-            var generatedContent = GeneratePseudoRandomSequence(sequenceSizeInBytes);
-            File.WriteAllBytes(binaryFilePath, generatedContent);
-            return binaryFilePath;
-        }
-
-        public IEnumerable<string> GenerateBinaryFiles(int sequenceSize, int fileCount = 1, string outputDir = ".\\", bool considerPreexistingFiles = true)
-        {
-            string methodOutputFolder = GetOutputFolderForMethod(outputDir);
-
-            ConcurrentBag<string> fileBag;
-            if (considerPreexistingFiles)
+            var dirInfo = new DirectoryInfo(methodOutputFolder);
+            var files = dirInfo.GetFiles().Where(f => f.Length == sequenceSize);
+            if (files.Count() > fileCount)
             {
-                var dirInfo = new DirectoryInfo(methodOutputFolder);
-                var files = dirInfo.GetFiles().Where(f => f.Length == sequenceSize);
-                if (files.Count() > fileCount)
-                {
-                    return files.Take(fileCount).Select(f => f.FullName);
-                }
-                else
-                {
-                    fileBag = new ConcurrentBag<string>(files.Select(f => f.FullName));
-                    fileCount -= files.Count();
-                }
+                return files.Take(fileCount).Select(f => f.FullName);
             }
             else
             {
-                fileBag = new ConcurrentBag<string>();
+                fileBag = new ConcurrentBag<string>(files.Select(f => f.FullName));
+                fileCount -= files.Count();
             }
-
-            Parallel.For(0, fileCount, new ParallelOptions() { MaxDegreeOfParallelism = 10 }, (index) =>
-            {
-                var newFilePath = GenerateBinaryFile(sequenceSize, outputDir);
-                fileBag.Add(newFilePath);
-            });
-            return fileBag;
         }
-
-        public abstract byte[] GeneratePseudoRandomSequence(int sequenceSizeInBytes);
-
-        private string GetOutputFolderForMethod(string outputDir)
+        else
         {
-            if (!Directory.Exists(outputDir))
-                Directory.CreateDirectory(outputDir);
-
-            var dirNameForMethod = GetFolderNameForGeneratedFiles();
-            var dirCombined = Path.Combine(outputDir, dirNameForMethod);
-            if (!Directory.Exists(dirCombined))
-                Directory.CreateDirectory(dirCombined);
-            return dirCombined;
+            fileBag = new ConcurrentBag<string>();
         }
+
+        Parallel.For(0, fileCount, (index) =>
+        {
+            var newFilePath = GenerateBinaryFile(sequenceSize, outputDir);
+            fileBag.Add(newFilePath);
+        });
+        return fileBag;
+    }
+
+    public abstract byte[] GeneratePseudoRandomSequence(int sequenceSizeInBytes);
+
+    private string GetOutputFolderForMethod(string outputDir)
+    {
+        if (!Directory.Exists(outputDir))
+            Directory.CreateDirectory(outputDir);
+
+        var dirNameForMethod = GetFolderNameForGeneratedFiles();
+        var dirCombined = Path.Combine(outputDir, dirNameForMethod);
+        if (!Directory.Exists(dirCombined))
+            Directory.CreateDirectory(dirCombined);
+        return dirCombined;
     }
 }
