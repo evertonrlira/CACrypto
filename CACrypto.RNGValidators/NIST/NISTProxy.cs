@@ -3,27 +3,11 @@ using System.Diagnostics;
 
 namespace CACrypto.RNGValidators.NIST;
 
-internal class ProxyNIST
+internal class NISTProxy
 {
-    private readonly string NIST_PATH;
-    private readonly string EXECUTABLE_FILENAME;
-    private readonly string EXECUTABLE_PATH;
-    private readonly string PLUGIN_FILENAME;
-    private readonly string PLUGIN_PATH;
+    private static Mutex mutexObj = new Mutex();
 
-    public ProxyNIST()
-    {
-        var projectPath = Util.GetCurrentProjectDirectoryPath();
-
-        NIST_PATH = Path.Combine(projectPath, ".\\NIST");
-        PLUGIN_FILENAME = "libfftw3-3.dll";
-        PLUGIN_PATH = Path.Combine(NIST_PATH, PLUGIN_FILENAME);
-        if (Environment.Is64BitOperatingSystem && Environment.Is64BitProcess)
-            EXECUTABLE_FILENAME = "NIST_STS_x64.exe";
-        else
-            EXECUTABLE_FILENAME = "NIST_STS_x32.exe";
-        EXECUTABLE_PATH = Path.Combine(NIST_PATH, EXECUTABLE_FILENAME);
-    }
+    private static readonly string PLUGIN_FILENAME = "libfftw3-3.dll";
 
     private static string ExecutableFile
     {
@@ -36,112 +20,134 @@ internal class ProxyNIST
         }
     }
 
-    public class TestInput : IDisposable
+    public record TestInput
     {
         public int Bytes { get; set; }
 
-        public bool IsDisposableFile { get; set; }
-
-        public string FileName { get; set; }
-
-        public void Dispose()
-        {
-            if (IsDisposableFile)
-            {
-                File.Delete(FileName);
-            }
-        }
+        public required string FileName { get; set; }
     }
 
-    public bool[] Test(TestInput input)
+    public static bool GenerateIndividualReportFile(TestInput input, string newReportFilename)
     {
-        var testedBinFile = new FileInfo(input.FileName);
-        var testedBinFileName = testedBinFile.Name.Substring(0, testedBinFile.Name.Length - 4);
-        var newReportFileName = Path.Combine(testedBinFile.Directory.FullName, testedBinFileName + "_NIST.txt");
-        if (!File.Exists(newReportFileName))
+        if (File.Exists(newReportFilename))
         {
-            var newTempDir = Util.CreateUniqueTempDirectory();
-            var newTempExecutable = Path.Combine(newTempDir, EXECUTABLE_FILENAME);
-            File.Copy(EXECUTABLE_PATH, newTempExecutable);
-            var newPluginExecutable = Path.Combine(".\\", PLUGIN_FILENAME);
-            if (!File.Exists(newPluginExecutable))
-            {
-                File.Copy(PLUGIN_PATH, newPluginExecutable);
-            }
-            newPluginExecutable = Path.Combine(newTempDir, PLUGIN_FILENAME);
-            if (!File.Exists(newPluginExecutable))
-            {
-                File.Copy(PLUGIN_PATH, newPluginExecutable);
-            }
-
-            var templatesSrc = Path.Combine(NIST_PATH, "templates");
-            var templatesDst = Path.Combine(newTempDir, "templates\\");
-            var experimentsDir = Path.Combine(newTempDir, "experiments\\");
-            var algorithmTestingDir = Path.Combine(experimentsDir, "AlgorithmTesting\\");
-            var analysisReportFilename = Path.Combine(algorithmTestingDir, "finalAnalysisReport.txt");
-
-            if (Directory.Exists(templatesDst))
-                Directory.Delete(templatesDst, true);
-
-            Util.CopyDirectory(templatesSrc, templatesDst);
-
-            if (!Directory.Exists(experimentsDir))
-                Directory.CreateDirectory(experimentsDir);
-            if (Directory.Exists(algorithmTestingDir))
-                Directory.Delete(algorithmTestingDir, true);
-            Directory.CreateDirectory(algorithmTestingDir);
-
-            var testsNames = new string[]
-            {
-                "Frequency", "BlockFrequency", "Runs", "LongestRun", "Rank", "FFT", "NonOverlappingTemplate", "OverlappingTemplate",
-                "Universal", "LinearComplexity", "Serial", "ApproximateEntropy", "CumulativeSums", "RandomExcursions", "RandomExcursionsVariant"
-            };
-            foreach (var testName in testsNames)
-            {
-                Directory.CreateDirectory(Path.Combine(algorithmTestingDir, testName));
-            }
-
-            Process cmd = new Process();
-            cmd.StartInfo.FileName = "cmd.exe";
-            cmd.StartInfo.RedirectStandardInput = true;
-            cmd.StartInfo.RedirectStandardOutput = true;
-            cmd.StartInfo.CreateNoWindow = true;
-            cmd.StartInfo.UseShellExecute = false;
-            cmd.StartInfo.WorkingDirectory = newTempDir;
-            cmd.Start();
-
-            var inputCmd = string.Format("{0} -file \"{1}\" {2} -binary -defaultpar -fast -tests 111111111111111 -streams 1 -fileoutput",//-onlymem",
-                EXECUTABLE_FILENAME, input.FileName, 8 * input.Bytes);
-            cmd.StandardInput.WriteLine(inputCmd);
-            cmd.StandardInput.Flush();
-            cmd.StandardInput.Close();
-            var executionOutputTxt = cmd.StandardOutput.ReadToEnd();
-            var sucessfulTesting =
-                executionOutputTxt.Contains("Statistical Testing Complete!!!!!!!!!!!!")
-                && !executionOutputTxt.Contains("ERROR") && !executionOutputTxt.Contains("Unable");
-
-            if (sucessfulTesting)
-            {
-                File.Copy(analysisReportFilename, newReportFileName);
-                Directory.Delete(newTempDir, true);
-            }
-            else
-            {
-                Directory.Delete(newTempDir, true);
-                throw new Exception("NIST test failure: " + Environment.NewLine + executionOutputTxt);
-            }
+            return true;
         }
-        return ParseTestResultsFromFile(newReportFileName);
+
+        var projectPath = Util.GetCurrentProjectDirectoryPath();
+
+        string NIST_PATH = Path.Combine(projectPath, ".\\NIST");
+        string PLUGIN_PATH = Path.Combine(NIST_PATH, PLUGIN_FILENAME);
+        string EXECUTABLE_FILENAME = (Environment.Is64BitOperatingSystem && Environment.Is64BitProcess)
+            ? "NIST_STS_x64.exe"
+            : "NIST_STS_x32.exe";
+        string EXECUTABLE_PATH = Path.Combine(NIST_PATH, EXECUTABLE_FILENAME);
+
+        var newTempDir = Util.CreateUniqueTempDirectory();
+        var newTempExecutable = Path.Combine(newTempDir, EXECUTABLE_FILENAME);
+        File.Copy(EXECUTABLE_PATH, newTempExecutable);
+        var newPluginExecutable = Path.Combine(".\\", PLUGIN_FILENAME);
+        if (!File.Exists(newPluginExecutable))
+        {
+            CopyPluginToRuntimeDirectory();
+        }
+        newPluginExecutable = Path.Combine(newTempDir, PLUGIN_FILENAME);
+        if (!File.Exists(newPluginExecutable))
+        {
+            File.Copy(PLUGIN_PATH, newPluginExecutable);
+        }
+
+        var templatesSrc = Path.Combine(NIST_PATH, "templates");
+        var templatesDst = Path.Combine(newTempDir, "templates\\");
+        var experimentsDir = Path.Combine(newTempDir, "experiments\\");
+        var algorithmTestingDir = Path.Combine(experimentsDir, "AlgorithmTesting\\");
+        var analysisReportFilename = Path.Combine(algorithmTestingDir, "finalAnalysisReport.txt");
+
+        if (Directory.Exists(templatesDst))
+            Directory.Delete(templatesDst, true);
+
+        Util.CopyDirectory(templatesSrc, templatesDst);
+
+        if (!Directory.Exists(experimentsDir))
+            Directory.CreateDirectory(experimentsDir);
+        if (Directory.Exists(algorithmTestingDir))
+            Directory.Delete(algorithmTestingDir, true);
+        Directory.CreateDirectory(algorithmTestingDir);
+
+        var testsNames = new string[]
+        {
+            "Frequency", "BlockFrequency", "Runs", "LongestRun", "Rank", "FFT", "NonOverlappingTemplate", "OverlappingTemplate",
+            "Universal", "LinearComplexity", "Serial", "ApproximateEntropy", "CumulativeSums", "RandomExcursions", "RandomExcursionsVariant"
+        };
+        foreach (var testName in testsNames)
+        {
+            Directory.CreateDirectory(Path.Combine(algorithmTestingDir, testName));
+        }
+
+        Process cmd = new Process();
+        cmd.StartInfo.FileName = "cmd.exe";
+        cmd.StartInfo.RedirectStandardInput = true;
+        cmd.StartInfo.RedirectStandardOutput = true;
+        cmd.StartInfo.CreateNoWindow = true;
+        cmd.StartInfo.UseShellExecute = false;
+        cmd.StartInfo.WorkingDirectory = newTempDir;
+        cmd.Start();
+
+        var inputCmd = string.Format("{0} -file \"{1}\" {2} -binary -defaultpar -fast -tests 111111111111111 -streams 1 -fileoutput",//-onlymem",
+            EXECUTABLE_FILENAME, input.FileName, 8 * input.Bytes);
+        cmd.StandardInput.WriteLine(inputCmd);
+        cmd.StandardInput.Flush();
+        cmd.StandardInput.Close();
+        var executionOutputTxt = cmd.StandardOutput.ReadToEnd();
+        var sucessfulOutput =
+            executionOutputTxt.Contains("Statistical Testing Complete!!!!!!!!!!!!")
+            && !executionOutputTxt.Contains("ERROR") 
+            && !executionOutputTxt.Contains("Unable");
+
+        if (!sucessfulOutput)
+        {
+            Directory.Delete(newTempDir, true);
+            return false;
+        }
+
+        var sucessfulTesting =
+            !File.ReadAllText(analysisReportFilename).Contains("----        ----     ----");
+
+        if (!sucessfulTesting)
+        {
+            Directory.Delete(newTempDir, true);
+            return false;
+        }
+
+        File.Copy(analysisReportFilename, newReportFilename);
+        Directory.Delete(newTempDir, true);
+        return true;
     }
 
-    public static TestInput CreateTestInput(string fileName, bool isDisposable = false)
+    private static void CopyPluginToRuntimeDirectory()
+    {
+        var projectPath = Util.GetCurrentProjectDirectoryPath();
+
+        var NIST_PATH = Path.Combine(projectPath, ".\\NIST");
+        var PLUGIN_PATH = Path.Combine(NIST_PATH, PLUGIN_FILENAME);
+
+        var newPluginExecutable = Path.Combine(".\\", PLUGIN_FILENAME);
+        mutexObj.WaitOne();
+        if (!File.Exists(newPluginExecutable))
+        {
+            File.Copy(PLUGIN_PATH, newPluginExecutable);
+        }
+        mutexObj.ReleaseMutex();
+    }
+
+    public static TestInput CreateTestInput(string fileName)
     {
         var fileInfo = new FileInfo(fileName);
 
-        return new TestInput() { Bytes = (int)fileInfo.Length, IsDisposableFile = isDisposable, FileName = fileName };
+        return new TestInput() { Bytes = (int)fileInfo.Length, FileName = fileName };
     }
 
-    private static bool[] ParseTestResultsFromFile(string reportFilename)
+    public static bool[] ParseTestResultsFromFile(string reportFilename)
     {
         var stringErro = string.Format("Failure when processing file: {0}", reportFilename);
         var reportLines = File.ReadAllLines(reportFilename).Skip(7).Take(188);

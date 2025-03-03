@@ -6,12 +6,12 @@ namespace CACrypto.RNGValidators.Avalanche;
 
 public static class PlaintextAvalanche
 {
-    public static void Run(PermutiveCACryptoMethodBase cryptoMethod, TestOptions options, int? testRepetitions = null)
+    public static void Run(PermutiveCACryptoMethodBase cryptoMethod, ValidatorOptions options, int? testRepetitions = null)
     {
         testRepetitions ??= SampleSize.TenMegaBytes / SampleSize.DefaultBlockSize;
 
         var experimentTitle = string.Format("METHOD {0} - PLAINTEXT AVALANCHE EXPERIMENT - {1} REPETITIONS", cryptoMethod.GetMethodName(), testRepetitions);
-        if (options.writeConsole)
+        if (options.WriteToConsole)
         {
             Console.WriteLine(experimentTitle);
         }
@@ -29,6 +29,6 @@ public static class PlaintextAvalanche
             disturbanceSet.Add(disturbance);
         });
 
-        Util.DisplayMetricsForDisturbanceSet(disturbanceSet, options.writeConsole);
+        Util.DisplayMetricsForDisturbanceSet(disturbanceSet, options.WriteToConsole);
     }
 }

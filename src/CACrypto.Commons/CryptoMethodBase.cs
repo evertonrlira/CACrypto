@@ -21,28 +21,21 @@ public abstract class CryptoMethodBase(string algorithmName)
         return binaryFilePath;
     }
 
-    public IEnumerable<string> GenerateBinaryFiles(int sequenceSize, int fileCount = 1, string outputDir = ".\\", bool considerPreexistingFiles = true)
+    public IEnumerable<string> GenerateBinaryFiles(int sequenceSize, int fileCount = 1, string outputDir = ".\\")
     {
-        string methodOutputFolder = GetOutputFolderForMethod(outputDir);
-
         ConcurrentBag<string> fileBag;
-        if (considerPreexistingFiles)
+        string methodOutputFolder = GetOutputFolderForMethod(outputDir);
+        
+        var dirInfo = new DirectoryInfo(methodOutputFolder);
+        var preexistingFiles = dirInfo.GetFiles().Where(f => f.Length == sequenceSize);
+        if (preexistingFiles.Count() >= fileCount)
         {
-            var dirInfo = new DirectoryInfo(methodOutputFolder);
-            var files = dirInfo.GetFiles().Where(f => f.Length == sequenceSize);
-            if (files.Count() > fileCount)
-            {
-                return files.Take(fileCount).Select(f => f.FullName);
-            }
-            else
-            {
-                fileBag = new ConcurrentBag<string>(files.Select(f => f.FullName));
-                fileCount -= files.Count();
-            }
+            return preexistingFiles.Take(fileCount).Select(f => f.FullName);
         }
         else
         {
-            fileBag = new ConcurrentBag<string>();
+            fileBag = new ConcurrentBag<string>(preexistingFiles.Select(f => f.FullName));
+            fileCount -= preexistingFiles.Count();
         }
 
         Parallel.For(0, fileCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (index) =>
