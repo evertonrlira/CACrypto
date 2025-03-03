@@ -17,7 +17,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CACrypto.HCA", "src\CACrypt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CACrypto.Benchmarks", "extra\CACrypto.Benchmarks\CACrypto.Benchmarks.csproj", "{3D376185-673F-4F9C-9603-322C4B7234FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CACrypto.RNGValidators", "CACrypto.RNGValidators\CACrypto.RNGValidators.csproj", "{32650F7B-03E4-4821-A298-13004BBABDA4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CACrypto.RNGValidators", "extra\CACrypto.RNGValidators\CACrypto.RNGValidators.csproj", "{32650F7B-03E4-4821-A298-13004BBABDA4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

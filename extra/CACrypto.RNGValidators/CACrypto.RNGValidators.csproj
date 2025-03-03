@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\CACrypto.Commons\CACrypto.Commons.csproj" />
-    <ProjectReference Include="..\src\CACrypto.HCA\CACrypto.HCA.csproj" />
-    <ProjectReference Include="..\src\CACrypto.VHCA\CACrypto.VHCA.csproj" />
+    <ProjectReference Include="..\..\src\CACrypto.Commons\CACrypto.Commons.csproj" />
+    <ProjectReference Include="..\..\src\CACrypto.HCA\CACrypto.HCA.csproj" />
+    <ProjectReference Include="..\..\src\CACrypto.VHCA\CACrypto.VHCA.csproj" />
   </ItemGroup>
 
 </Project>
