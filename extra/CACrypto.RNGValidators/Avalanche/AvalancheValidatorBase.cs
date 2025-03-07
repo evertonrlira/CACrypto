@@ -5,36 +5,36 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.Avalanche;
 
-internal abstract class AvalancheValidatorBase(CryptoMethodBase crypto, ValidatorOptions? opt)
-    : CryptoValidatorBase(crypto, opt)
+internal abstract class AvalancheValidatorBase(IEnumerable<CryptoMethodBase> cryptoMethods, ValidatorOptions? opt)
+    : CryptoValidatorBase(cryptoMethods, opt)
 {
-    protected override string CompileValidationReport()
+    protected override string CompileValidationReport(CryptoMethodBase cryptoMethod)
     {
         var plaintextSet = Util.GetSecureRandomByteArrays(Options.InputSampleSize, Options.InputSamplesCount);
 
         var disturbanceSet = new ConcurrentBag<byte[]>();
         Parallel.ForEach(plaintextSet, originalPlaintext =>
         {
-            var originalKey = CryptoMethod.GenerateRandomKey();
-            var originalCiphertext = CryptoMethod.EncryptAsSingleBlock(originalPlaintext, originalKey);
+            var originalKey = cryptoMethod.GenerateRandomKey();
+            var originalCiphertext = cryptoMethod.EncryptAsSingleBlock(originalPlaintext, originalKey);
             var nextPlaintext = GetNextPlaintext(originalPlaintext);
             var nextKey = GetNextKey(originalKey);
-            var disturbedCiphertext = CryptoMethod.EncryptAsSingleBlock(nextPlaintext, nextKey);
+            var disturbedCiphertext = cryptoMethod.EncryptAsSingleBlock(nextPlaintext, nextKey);
             var disturbance = Util.XOR(originalCiphertext, disturbedCiphertext);
             disturbanceSet.Add(disturbance);
         });
-        return CompileValidationReport(disturbanceSet);
+        return CompileValidationReport(cryptoMethod, disturbanceSet);
     }
 
     protected abstract CryptoKey GetNextKey(CryptoKey originalKey);
     protected abstract byte[] GetNextPlaintext(byte[] originalPlaintext);
 
-    private string CompileValidationReport(IEnumerable<byte[]> disturbanceResults)
+    private string CompileValidationReport(CryptoMethodBase cryptoMethod, IEnumerable<byte[]> disturbanceResults)
     {
         var culture = System.Globalization.CultureInfo.CreateSpecificCulture("en-US");
 
         var reportCompiler = new StringBuilder();
-        reportCompiler.AppendLine($"METHOD {CryptoMethod.GetMethodName()}");
+        reportCompiler.AppendLine($"METHOD {cryptoMethod.GetMethodName()}");
         reportCompiler.AppendLine($"SUCCESS RATES ON {GetValidatorName()}");
         reportCompiler.AppendLine($"INPUT COUNT: {disturbanceResults.Count()}");
 

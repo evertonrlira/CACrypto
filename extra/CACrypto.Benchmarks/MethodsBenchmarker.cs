@@ -25,7 +25,7 @@ public class MethodsBenchmarker
         _vhcaKey = (VHCAKey)_vhca.GenerateRandomKey();
     }
 
-    [Benchmark]
+    /*[Benchmark]
     public byte[] EncryptUsingHCA()
     {
         return _hca.EncryptAsSingleBlock(_plaintextBytes, _hcaKey);
@@ -47,5 +47,18 @@ public class MethodsBenchmarker
     public byte[] GenerateRandom1MBSequenceUsingVHCA()
     {
         return _vhca.GeneratePseudoRandomSequence(SampleSize.OneMegaByte);
+    }*/
+
+    [Benchmark]
+    public byte[] GenerateRandomSmallSequenceUsingHCA()
+    {
+        return _hca.GeneratePseudoRandomSequence(SampleSize.SixtyFourKB);
+    }
+
+
+    [Benchmark]
+    public byte[] GenerateRandomSmallSequenceUsingVHCA()
+    {
+        return _vhca.GeneratePseudoRandomSequence(SampleSize.SixtyFourKB);
     }
 }

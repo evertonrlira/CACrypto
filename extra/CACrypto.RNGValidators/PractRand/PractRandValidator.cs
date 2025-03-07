@@ -4,13 +4,15 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.PractRand;
 
-internal class PractRandValidator(CryptoMethodBase crypto, ValidatorOptions? opt = null) 
-    : RNGValidatorBase(crypto, opt)
+internal class PractRandValidator(IEnumerable<CryptoMethodBase> cryptoMethods, ValidatorOptions? opt = null) 
+    : RNGValidatorBase(cryptoMethods, opt)
 {
     protected override string GetValidatorName() => "PractRand";
     protected override int GetMaxAllowedDegreeOfParallelism() => Environment.ProcessorCount;
 
-    protected override string CompileValidationReport(IEnumerable<string> individualReportFiles)
+    public PractRandValidator(CryptoMethodBase cryptoMethod, ValidatorOptions? opt = null) : this([cryptoMethod], opt) { }
+
+    protected override string CompileValidationReport(CryptoMethodBase cryptoMethod, IEnumerable<string> individualReportFiles)
     {
         var culture = System.Globalization.CultureInfo.CreateSpecificCulture("en-US");
 
@@ -34,7 +36,7 @@ internal class PractRandValidator(CryptoMethodBase crypto, ValidatorOptions? opt
         }
 
         var reportCompiler = new StringBuilder();
-        reportCompiler.AppendLine($"METHOD {CryptoMethod.GetMethodName()}");
+        reportCompiler.AppendLine($"METHOD {cryptoMethod.GetMethodName()}");
         reportCompiler.AppendLine($"SUCCESS RATES ON {GetValidatorName()}");
         reportCompiler.AppendLine($"INPUT COUNT: {individualReportFiles.Count()}");
         foreach (var testGroupKey in testGroupKeys)

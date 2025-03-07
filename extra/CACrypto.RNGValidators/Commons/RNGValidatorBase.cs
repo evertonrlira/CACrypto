@@ -2,8 +2,8 @@
 
 namespace CACrypto.RNGValidators.Commons;
 
-internal abstract class RNGValidatorBase(CryptoMethodBase cryptoMethod, ValidatorOptions? options = null) 
-    : CryptoValidatorBase(cryptoMethod, options)
+internal abstract class RNGValidatorBase(IEnumerable<CryptoMethodBase> cryptoMethods, ValidatorOptions? options = null) 
+    : CryptoValidatorBase(cryptoMethods, options)
 {
     protected string GetIndividualReportFilename(string inputFileName)
     {
@@ -57,20 +57,20 @@ internal abstract class RNGValidatorBase(CryptoMethodBase cryptoMethod, Validato
         return individualReportFiles;
     }
 
-    protected override string CompileValidationReport()
+    protected override string CompileValidationReport(CryptoMethodBase cryptoMethod)
     {
-        var inputfiles = CryptoMethod.GenerateBinaryFiles(Options.InputSampleSize, Options.InputSamplesCount, Options.DataDirectoryPath);
+        var inputfiles = cryptoMethod.GenerateBinaryFiles(Options.InputSampleSize, Options.InputSamplesCount, Options.DataDirectoryPath);
         var individualReportFiles = GenerateIndividualValidationReports(inputfiles);
         while (individualReportFiles.Count < Options.InputSamplesCount)
         {
-            inputfiles = CryptoMethod.GenerateBinaryFiles(Options.InputSampleSize, Options.InputSamplesCount, Options.DataDirectoryPath);
+            inputfiles = cryptoMethod.GenerateBinaryFiles(Options.InputSampleSize, Options.InputSamplesCount, Options.DataDirectoryPath);
             individualReportFiles = GenerateIndividualValidationReports(inputfiles);
         }
 
-        return CompileValidationReport(individualReportFiles);
+        return CompileValidationReport(cryptoMethod, individualReportFiles);
     }
 
-    protected abstract string CompileValidationReport(IEnumerable<string> individualReportFiles);
+    protected abstract string CompileValidationReport(CryptoMethodBase cryptoMethod, IEnumerable<string> individualReportFiles);
 
     protected override ValidatorOptions GetDefaultValidatorOptions()
     {

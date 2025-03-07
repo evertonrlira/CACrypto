@@ -65,7 +65,6 @@ public class VHCACrypto
         int iterations = latticeLength;
         int[] image = new int[latticeLength];
         int[] finalLattice;
-        int[] swapAux;
 
         var toggleDirection = mainRules[0].IsLeftSensible ? ToggleDirection.Left : ToggleDirection.Right;
         var borderLength = DoubleRadius;
@@ -75,9 +74,8 @@ public class VHCACrypto
             SequentialEvolveBits(preImage, mainRules, borderRules, borderLeftCellIdx, image);
 
             // Prepare for Next Iteration
-            swapAux = image;
-            image = preImage;
-            preImage = swapAux;
+            Util.Swap(ref image, ref preImage);
+
             if (toggleDirection == ToggleDirection.Left)
             {
                 borderLeftCellIdx = Util.CircularIdx(borderLeftCellIdx + DoubleRadius, latticeLength);
@@ -99,7 +97,8 @@ public class VHCACrypto
         var currentBitInPreImageIdx = 0;
         var currentBitInImageIdx = 0;
         var neighSum = 0;
-        foreach (var _ in Enumerable.Range(0, DoubleRadius))
+
+        for (int initialBitsTraverseIdx = 0; initialBitsTraverseIdx < DoubleRadius; ++initialBitsTraverseIdx)
         {
             neighSum |= preImage[currentBitInPreImageIdx];
             neighSum <<= 1;
@@ -107,7 +106,7 @@ public class VHCACrypto
             currentBitInPreImageIdx = Util.CircularIdx(currentBitInPreImageIdx + 1, latticeLength);
         }
 
-        foreach (var _ in Enumerable.Range(0, latticeLength))
+        foreach (var _ in preImage)
         {
             neighSum |= preImage[currentBitInPreImageIdx];
             if (currentBitInImageIdx == imageBorderLeftCellIdx || currentBitInImageIdx == imageBorderLeftCellIdx + 1)
@@ -177,13 +176,13 @@ public class VHCACrypto
         }
         else
         {
-            currentBitInPreImageIdx = preImageBorderLeftCellIdx + Radius; // TODO: Revisar
+            currentBitInPreImageIdx = preImageBorderLeftCellIdx + Radius;
         }
 
         int neighSum = 0;
         int toggleDirectionShift = toggleDirection == ToggleDirection.Left ? -1 : 1;
         int currentBitInImageIdx = Util.CircularIdx(currentBitInPreImageIdx + (toggleDirection == ToggleDirection.Left ? 1 : -1), latticeLength);
-        foreach (var _ in Enumerable.Range(0, latticeLength))
+        foreach (var _ in image)
         {
             if (currentBitInImageIdx == preImageBorderLeftCellIdx || currentBitInImageIdx == preImageBorderLeftCellIdx + 1)
             {

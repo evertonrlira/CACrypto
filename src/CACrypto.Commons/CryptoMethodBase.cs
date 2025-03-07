@@ -16,7 +16,7 @@ public abstract class CryptoMethodBase(string algorithmName)
 
     public string GenerateBinaryFile(int sequenceSizeInBytes, string outputDir = ".\\")
     {
-        string methodOutputFolder = GetOutputFolderForMethod(outputDir);
+        string methodOutputFolder = GetOutputFolderForBinaryFiles(outputDir);
 
         string binaryFilePath = string.Format("{0}.bin", Path.Combine(methodOutputFolder, Path.GetRandomFileName()));
         var generatedContent = GeneratePseudoRandomSequence(sequenceSizeInBytes);
@@ -27,7 +27,7 @@ public abstract class CryptoMethodBase(string algorithmName)
     public IEnumerable<string> GenerateBinaryFiles(int sequenceSize, int fileCount = 1, string outputDir = ".\\")
     {
         ConcurrentBag<string> fileBag;
-        string methodOutputFolder = GetOutputFolderForMethod(outputDir);
+        string methodOutputFolder = GetOutputFolderForBinaryFiles(outputDir);
         
         var dirInfo = new DirectoryInfo(methodOutputFolder);
         var preexistingFiles = dirInfo.GetFiles().Where(f => f.Length == sequenceSize);
@@ -51,7 +51,7 @@ public abstract class CryptoMethodBase(string algorithmName)
 
     public abstract byte[] GeneratePseudoRandomSequence(int sequenceSizeInBytes);
 
-    public string GetOutputFolderForMethod(string outputDir)
+    public string GetOutputFolderForBinaryFiles(string outputDir)
     {
         if (!Directory.Exists(outputDir))
             Directory.CreateDirectory(outputDir);

@@ -4,13 +4,15 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.NIST;
 
-internal class NISTValidator(CryptoMethodBase crypto, ValidatorOptions? opt = null) 
-    : RNGValidatorBase(crypto, opt)
+internal class NISTValidator(IEnumerable<CryptoMethodBase> cryptoMethods, ValidatorOptions? opt = null) 
+    : RNGValidatorBase(cryptoMethods, opt)
 {
     protected override string GetValidatorName() => "NIST";
     protected override int GetMaxAllowedDegreeOfParallelism() => 5;
 
-    protected override string CompileValidationReport(IEnumerable<string> individualReportFiles)
+    public NISTValidator(CryptoMethodBase cryptoMethod, ValidatorOptions? opt = null) : this([cryptoMethod], opt) {  }
+
+    protected override string CompileValidationReport(CryptoMethodBase cryptoMethod, IEnumerable<string> individualReportFiles)
     {
         var culture = System.Globalization.CultureInfo.CreateSpecificCulture("en-US");
 
@@ -29,7 +31,7 @@ internal class NISTValidator(CryptoMethodBase crypto, ValidatorOptions? opt = nu
         }
 
         var reportCompiler = new StringBuilder();
-        reportCompiler.AppendLine($"METHOD {CryptoMethod.GetMethodName()}");
+        reportCompiler.AppendLine($"METHOD {cryptoMethod.GetMethodName()}");
         reportCompiler.AppendLine($"SUCCESS RATES ON {GetValidatorName()}");
         reportCompiler.AppendLine($"INPUT COUNT: {individualReportFiles.Count()}");
         for (int test = 0; test < 15; test++)
