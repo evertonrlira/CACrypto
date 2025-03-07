@@ -10,6 +10,9 @@ public abstract class CryptoMethodBase(string algorithmName)
     public string GetFolderNameForGeneratedFiles() => AlgorithmName;
     public abstract int GetDefaultBlockSizeInBits();
     public abstract int GetDefaultBlockSizeInBytes();
+    public abstract int GetDefaultKeySizeInBytes();
+
+    public abstract CryptoKey GenerateRandomKey();
 
     public string GenerateBinaryFile(int sequenceSizeInBytes, string outputDir = ".\\")
     {
@@ -48,7 +51,7 @@ public abstract class CryptoMethodBase(string algorithmName)
 
     public abstract byte[] GeneratePseudoRandomSequence(int sequenceSizeInBytes);
 
-    private string GetOutputFolderForMethod(string outputDir)
+    public string GetOutputFolderForMethod(string outputDir)
     {
         if (!Directory.Exists(outputDir))
             Directory.CreateDirectory(outputDir);
@@ -59,4 +62,6 @@ public abstract class CryptoMethodBase(string algorithmName)
             Directory.CreateDirectory(dirCombined);
         return dirCombined;
     }
+
+    public abstract byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key);
 }

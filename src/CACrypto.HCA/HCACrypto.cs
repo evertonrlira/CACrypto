@@ -4,6 +4,7 @@ namespace CACrypto.HCA;
 
 public class HCACrypto
 {
+    public const string Name = "HCA";
     public const int KeySizeInBytes = 32;
     public const int BlockSizeInBytes = 16;
     public const int BlockSizeInBits = 128;

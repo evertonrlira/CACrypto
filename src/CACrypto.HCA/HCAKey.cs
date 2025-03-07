@@ -4,7 +4,7 @@ namespace CACrypto.HCA;
 
 public class HCAKey : PermutiveCACryptoKey
 {
-    private HCAKey(byte[] keyBytes, ToggleDirection toggleDirection) : base(keyBytes, toggleDirection) { }
+    internal HCAKey(byte[] keyBytes, ToggleDirection toggleDirection) : base(keyBytes, toggleDirection) { }
 
     public static HCAKey GenerateRandomKey(int? _ = null, ToggleDirection? toggleDirection = null)
     {
@@ -17,5 +17,11 @@ public class HCAKey : PermutiveCACryptoKey
     public override bool IsValid()
     {
         return Util.SpatialEntropyCalculusForBinary(Util.ByteArrayToBinaryArray(Bytes)) > 0.75;
+    }
+
+    public override CryptoKey ChangeRandomBit()
+    {
+        var newBytes = Util.ChangeRandomBit(Bytes);
+        return new HCAKey(newBytes, Direction);
     }
 }

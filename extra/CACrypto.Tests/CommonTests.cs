@@ -11,7 +11,7 @@ internal static class CommonTests
     {
         // Arrange
         var originalText = Util.GetSecureRandomByteArray(textSizeInBytes);
-        var cryptoKey = cryptoMethod.GenerateRandomGenericKey(textSizeInBytes);
+        var cryptoKey = cryptoMethod.GenerateRandomKey(textSizeInBytes);
         // Act
         var cipherText = cryptoMethod.EncryptAsSingleBlock(originalText, cryptoKey);
         cipherText.Should().NotEqual(originalText);
@@ -27,7 +27,7 @@ internal static class CommonTests
     {
         // Arrange
         var originalText = Util.GetSecureRandomByteArray(textSizeInBytes);
-        var cryptoKey = cryptoMethod.GenerateRandomGenericKey(textSizeInBytes);
+        var cryptoKey = cryptoMethod.GenerateRandomKey(textSizeInBytes);
         var initializationVector = Util.GetSecureRandomByteArray(textSizeInBytes);
         // Act
         var cipherText = cryptoMethod.Encrypt(originalText, cryptoKey, initializationVector, operationMode);

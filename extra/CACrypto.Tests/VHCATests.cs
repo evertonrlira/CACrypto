@@ -15,7 +15,7 @@ public class VHCATests
 
     public VHCATests()
     {
-        _cryptoMethod = new VHCAProxy();
+        _cryptoMethod = new VHCAProvider();
     }
 
     [TestMethod]

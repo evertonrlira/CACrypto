@@ -4,8 +4,8 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.NIST;
 
-internal class NISTValidator(CryptoMethodBase cryptoMethod, ValidatorOptions options) 
-    : RNGValidatorBase(cryptoMethod, options)
+internal class NISTValidator(CryptoMethodBase crypto, ValidatorOptions? opt = null) 
+    : RNGValidatorBase(crypto, opt)
 {
     protected override string GetValidatorName() => "NIST";
     protected override int GetMaxAllowedDegreeOfParallelism() => 5;
@@ -29,7 +29,9 @@ internal class NISTValidator(CryptoMethodBase cryptoMethod, ValidatorOptions opt
         }
 
         var reportCompiler = new StringBuilder();
-        reportCompiler.AppendLine($"METHOD {CryptoMethod.GetMethodName()} - SUCCESS RATES ON {GetValidatorName()}");
+        reportCompiler.AppendLine($"METHOD {CryptoMethod.GetMethodName()}");
+        reportCompiler.AppendLine($"SUCCESS RATES ON {GetValidatorName()}");
+        reportCompiler.AppendLine($"INPUT COUNT: {individualReportFiles.Count()}");
         for (int test = 0; test < 15; test++)
         {
             var successPercentage = (((float)successCountArray[test] / (float)individualReportFiles.Count()) * 100.0f).ToString("N2", culture.NumberFormat) + "%";

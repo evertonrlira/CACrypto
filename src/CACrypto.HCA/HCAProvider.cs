@@ -2,13 +2,18 @@
 
 namespace CACrypto.HCA;
 
-public class HCAProxy : PermutiveCACryptoMethodBase
+public class HCAProvider : PermutiveCACryptoMethodBase
 {
-    public HCAProxy() : base(algorithmName: "HCA") { }
+    public HCAProvider() : base(algorithmName: HCACrypto.Name) { }
 
     protected override PermutiveCACryptoKey GenerateRandomKey(int blockSizeInBytes, ToggleDirection toggleDirection)
     {
         return HCAKey.GenerateRandomKey(blockSizeInBytes, toggleDirection);
+    }
+
+    protected override PermutiveCACryptoKey BuildKey(byte[] keyBytes, ToggleDirection toggleDirection)
+    {
+        return new HCAKey(keyBytes, toggleDirection);
     }
 
     public override Rule[] DeriveMainRulesFromKey(PermutiveCACryptoKey cryptoKey)
@@ -53,5 +58,10 @@ public class HCAProxy : PermutiveCACryptoMethodBase
     public override int GetDefaultBlockSizeInBytes()
     {
         return HCACrypto.BlockSizeInBytes;
+    }
+
+    public override int GetDefaultKeySizeInBytes()
+    {
+        return HCACrypto.KeySizeInBytes;
     }
 }

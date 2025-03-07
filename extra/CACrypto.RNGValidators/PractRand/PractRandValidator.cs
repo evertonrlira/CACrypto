@@ -4,8 +4,8 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.PractRand;
 
-internal class PractRandValidator(CryptoMethodBase cryptoMethod, ValidatorOptions options) 
-    : RNGValidatorBase(cryptoMethod, options)
+internal class PractRandValidator(CryptoMethodBase crypto, ValidatorOptions? opt = null) 
+    : RNGValidatorBase(crypto, opt)
 {
     protected override string GetValidatorName() => "PractRand";
     protected override int GetMaxAllowedDegreeOfParallelism() => Environment.ProcessorCount;
@@ -34,7 +34,9 @@ internal class PractRandValidator(CryptoMethodBase cryptoMethod, ValidatorOption
         }
 
         var reportCompiler = new StringBuilder();
-        reportCompiler.AppendLine($"METHOD {CryptoMethod.GetMethodName()} - SUCCESS RATES ON {GetValidatorName()}");
+        reportCompiler.AppendLine($"METHOD {CryptoMethod.GetMethodName()}");
+        reportCompiler.AppendLine($"SUCCESS RATES ON {GetValidatorName()}");
+        reportCompiler.AppendLine($"INPUT COUNT: {individualReportFiles.Count()}");
         foreach (var testGroupKey in testGroupKeys)
         {
             var successPercentage = (((float)testGroupSuccessCount[testGroupKey] / (float)individualReportFiles.Count()) * 100.0f).ToString("N2", culture.NumberFormat) + "%";

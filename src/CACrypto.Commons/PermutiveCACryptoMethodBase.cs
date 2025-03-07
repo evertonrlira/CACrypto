@@ -170,7 +170,7 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
     }
 
     protected abstract PermutiveCACryptoKey GenerateRandomKey(int blockSizeInBytes, ToggleDirection toggleDirection);
-    public PermutiveCACryptoKey GenerateRandomGenericKey(int? blockSizeInBytes = null, ToggleDirection? toggleDirection = null)
+    public PermutiveCACryptoKey GenerateRandomKey(int? blockSizeInBytes = null, ToggleDirection? toggleDirection = null)
     {
         blockSizeInBytes ??= GetDefaultBlockSizeInBytes();
         toggleDirection ??= Util.GetRandomToggleDirection();
@@ -181,6 +181,18 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
         }
         return key;
     }
+    public override CryptoKey GenerateRandomKey()
+    {
+        return GenerateRandomKey();
+    }
+    protected PermutiveCACryptoKey RebuildKey(byte[] bytes)
+    {
+        var keyBytes = bytes[..GetDefaultKeySizeInBytes()];
+        var directionByte = bytes[^1];
+        var toggleDirection = (ToggleDirection)Enum.ToObject(typeof(ToggleDirection), directionByte);
+        return BuildKey(keyBytes, toggleDirection);
+    }
+    protected abstract PermutiveCACryptoKey BuildKey(byte[] keyBytes, ToggleDirection toggleDirection);
 
     public abstract byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules);
     public byte[] EncryptAsSingleBlock(byte[] plainText, PermutiveCACryptoKey cryptoKey)
@@ -189,6 +201,13 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
         return EncryptAsSingleBlock(plainText, mainRules, borderRules);
+    }
+    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key)
+    {
+        var permutiveKey = (key as PermutiveCACryptoKey);
+        return permutiveKey is null 
+            ? throw new ArgumentException("Invalid Key Type")
+            : EncryptAsSingleBlock(plaintext, permutiveKey);
     }
 
     public abstract byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules);
@@ -206,7 +225,7 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
         var bw = new BinaryWriter(stream);
 
         var defaultBlockSizeInBytes = GetDefaultBlockSizeInBytes();
-        var cryptoKey = GenerateRandomGenericKey(defaultBlockSizeInBytes);
+        var cryptoKey = GenerateRandomKey(defaultBlockSizeInBytes);
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 

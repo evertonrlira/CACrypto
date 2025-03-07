@@ -9,17 +9,6 @@ internal class NISTProxy
 
     private static readonly string PLUGIN_FILENAME = "libfftw3-3.dll";
 
-    private static string ExecutableFile
-    {
-        get
-        {
-            if (Environment.Is64BitOperatingSystem && Environment.Is64BitProcess)
-                return "NIST_STS_x64.exe";
-            else
-                return "NIST_STS_x32.exe";
-        }
-    }
-
     public record TestInput
     {
         public int Bytes { get; set; }

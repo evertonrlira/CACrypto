@@ -7,13 +7,13 @@ public record ValidatorOptions
     public bool WriteToConsole { get; init; }
     public bool WriteToFile { get; init; }
     public string DataDirectoryPath { get; init; }
-    public int InputFilesSize { get; init; }
-    public int InputFilesCount { get; init; }
+    public int InputSampleSize { get; init; }
+    public int InputSamplesCount { get; init; }
 
-    public ValidatorOptions(int? inputFilesSize = null, int? inputFilesCount = null, string? dataDirectoryPath = null, bool? writeToConsole = null, bool? writeToFile = null)
+    public ValidatorOptions(int? inputSampleSize = null, int? inputSamplesCount = null, string? dataDirectoryPath = null, bool? writeToConsole = null, bool? writeToFile = null)
     {
-        InputFilesSize = inputFilesSize ?? SampleSize.OneMegaByte;
-        InputFilesCount = inputFilesCount ?? 1;
+        InputSampleSize = inputSampleSize ?? SampleSize.OneMegaByte;
+        InputSamplesCount = inputSamplesCount ?? 1;
         DataDirectoryPath = dataDirectoryPath ?? ".\\ValidationData\\";
         WriteToConsole = writeToConsole ?? true;
         WriteToFile = writeToFile ?? true;

@@ -14,7 +14,7 @@ public class HCATests
 
     public HCATests()
     {
-        _cryptoMethod = new HCAProxy();
+        _cryptoMethod = new HCAProvider();
     }
 
     [TestMethod]

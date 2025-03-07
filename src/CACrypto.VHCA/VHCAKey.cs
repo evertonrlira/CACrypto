@@ -4,7 +4,7 @@ namespace CACrypto.VHCA;
 
 public class VHCAKey : PermutiveCACryptoKey
 {
-    private VHCAKey(byte[] keyBytes, ToggleDirection toggleDirection) : base(keyBytes, toggleDirection) { }
+    internal VHCAKey(byte[] keyBytes, ToggleDirection toggleDirection) : base(keyBytes, toggleDirection) { }
 
     public static VHCAKey GenerateRandomKey(int? blockSize = null, ToggleDirection? toggleDirection = null)
     {
@@ -24,5 +24,11 @@ public class VHCAKey : PermutiveCACryptoKey
         return Util.SpatialEntropyCalculusForBinary(keyPart01) > 0.75 &&
                Util.SpatialEntropyCalculusForBinary(keyPart02) > 0.75 &&
                Util.SpatialEntropyCalculusForBinary(keyPart03) > 0.75;
+    }
+
+    public override CryptoKey ChangeRandomBit()
+    {
+        var newBytes = Util.ChangeRandomBit(Bytes);
+        return new VHCAKey(newBytes, Direction);
     }
 }

@@ -10,19 +10,19 @@ namespace CACrypto.Benchmarks;
 public class MethodsBenchmarker
 {
     private byte[] _plaintextBytes = null!;
-    private HCAProxy _hca = null!;
+    private HCAProvider _hca = null!;
     private HCAKey _hcaKey = null!;
     private VHCAKey _vhcaKey = null!;
-    private VHCAProxy _vhca = null!;
+    private VHCAProvider _vhca = null!;
 
     [GlobalSetup]
     public void Setup()
     {
         _plaintextBytes = Encoding.ASCII.GetBytes("Avocado is a delicious and nutritive fruit.");
-        _hca = new HCAProxy();
-        _hcaKey = (HCAKey)_hca.GenerateRandomGenericKey();
-        _vhca = new VHCAProxy();
-        _vhcaKey = (VHCAKey)_vhca.GenerateRandomGenericKey();
+        _hca = new HCAProvider();
+        _hcaKey = (HCAKey)_hca.GenerateRandomKey();
+        _vhca = new VHCAProvider();
+        _vhcaKey = (VHCAKey)_vhca.GenerateRandomKey();
     }
 
     [Benchmark]

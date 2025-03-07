@@ -2,9 +2,9 @@
 
 namespace CACrypto.VHCA;
 
-public class VHCAProxy : PermutiveCACryptoMethodBase
+public class VHCAProvider : PermutiveCACryptoMethodBase
 {
-    public VHCAProxy() : base(algorithmName: "VHCA") { }
+    public VHCAProvider() : base(algorithmName: VHCACrypto.Name) { }
 
     protected override PermutiveCACryptoKey GenerateRandomKey(int blockSizeInBytes, ToggleDirection toggleDirection)
     {
@@ -39,5 +39,15 @@ public class VHCAProxy : PermutiveCACryptoMethodBase
     public override int GetDefaultBlockSizeInBytes()
     {
         return VHCACrypto.BlockSizeInBytes;
+    }
+
+    protected override PermutiveCACryptoKey BuildKey(byte[] keyBytes, ToggleDirection toggleDirection)
+    {
+        return new VHCAKey(keyBytes, toggleDirection);
+    }
+
+    public override int GetDefaultKeySizeInBytes()
+    {
+        return VHCACrypto.KeySizeInBytes;
     }
 }

@@ -2,19 +2,14 @@
 
 namespace CACrypto.Commons
 {
-    public abstract class PermutiveCACryptoKey : CryptoKeyBase
+    public abstract class PermutiveCACryptoKey(byte[] bytes, ToggleDirection toggleDirection) 
+        : CryptoKey(bytes, new Dictionary<string, byte[]> {
+            { DirectionProperty, new byte[] { (byte)toggleDirection } }
+        })
     {
-        public ToggleDirection Direction { get; set; }
-
-        public PermutiveCACryptoKey(int[] bits, ToggleDirection toggleDirection) : base(bits)
-        {
-            Direction = toggleDirection;
-        }
-
-        public PermutiveCACryptoKey(byte[] bytes, ToggleDirection toggleDirection) : base(bytes)
-        {
-            Direction = toggleDirection;
-        }
+        private static readonly string DirectionProperty = typeof(ToggleDirection).Name;
+        public ToggleDirection Direction =>
+            (ToggleDirection)Enum.ToObject(typeof(ToggleDirection), ExtraData[DirectionProperty][0]);
 
         public abstract bool IsValid();
     }

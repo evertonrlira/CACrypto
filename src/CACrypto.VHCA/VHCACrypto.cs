@@ -5,6 +5,7 @@ namespace CACrypto.VHCA;
 
 public class VHCACrypto
 {
+    public const string Name = "VHCA";
     public const int KeySizeInBytes = 48;
     public const int BlockSizeInBytes = 16;
     public const int BlockSizeInBits = 128;

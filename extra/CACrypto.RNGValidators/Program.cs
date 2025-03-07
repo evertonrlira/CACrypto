@@ -1,5 +1,6 @@
 ﻿using CACrypto.Commons;
 using CACrypto.HCA;
+using CACrypto.RNGValidators.Avalanche;
 using CACrypto.RNGValidators.Commons;
 using CACrypto.RNGValidators.NIST;
 using CACrypto.RNGValidators.PractRand;
@@ -12,10 +13,13 @@ public static class Program
     public static void Main()
     {
         // var validatorOptions = new ValidatorOptions(SampleSize.TenMegaBytes, 1000, @"D:\PhD_Data");
-        // (new NISTValidator(new HCAProxy(), validatorOptions)).Run();
-        // (new PractRandValidator(new HCAProxy(), validatorOptions)).Run();
-        // (new NISTValidator(new VHCAProxy(), validatorOptions)).Run();
-        // (new PractRandValidator(new VHCAProxy(), validatorOptions)).Run();
+        // (new NISTValidator(new HCAProvider(), validatorOptions)).Run();
+        // (new PractRandValidator(new HCAProvider(), validatorOptions)).Run();
+        // (new NISTValidator(new VHCAProvider(), validatorOptions)).Run();
+        // (new PractRandValidator(new VHCAProvider(), validatorOptions)).Run();
+        // (new PlaintextAvalancheValidator(new HCAProvider())).Run();
+        // (new PlaintextAvalancheValidator(new VHCAProvider())).Run();
+        (new PlaintextAvalancheValidator(new AESProvider())).Run();
 
         Console.WriteLine("Done!");
     }

@@ -8,7 +8,7 @@ class Program
 {
     static void Main()
     {
-        var cryptoMethod = new VHCAProxy();
+        var cryptoMethod = new VHCAProvider();
 
         var plaintextString = "Avocado is a delicious and nutritive fruit.";
         Console.WriteLine($"- Original Plaintext: {plaintextString}");
@@ -16,7 +16,7 @@ class Program
         var plaintextBytes = Encoding.ASCII.GetBytes(plaintextString);
         Console.WriteLine($"- Non-Padded Plaintext Bytes: {BitConverter.ToString(plaintextBytes)}");
 
-        var cryptoKey = cryptoMethod.GenerateRandomGenericKey();
+        var cryptoKey = cryptoMethod.GenerateRandomKey();
 
         var initializationVector = Util.GetSecureRandomByteArray(cryptoMethod.GetDefaultBlockSizeInBytes() / 2);
 

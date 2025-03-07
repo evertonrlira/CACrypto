@@ -15,9 +15,6 @@ internal class PractRandProxy
                 return "..\\..\\PractRand\\PractRand_RNG_test_x32.exe";
         }
     }
-    //public static TestInputSize MB_1 = new TestInputSize() { Bytes = 1048576, Representation = "1MB" };
-    //public static TestInputSize KB_64 = new TestInputSize() { Bytes = 65536, Representation = "64KB" };
-    //public static TestInputSize KB_1 = new TestInputSize() { Bytes = 1024, Representation = "1KB" };
 
     public class TestInput
     {

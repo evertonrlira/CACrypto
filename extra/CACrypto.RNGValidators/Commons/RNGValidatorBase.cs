@@ -1,17 +1,10 @@
 ﻿using CACrypto.Commons;
-using CACrypto.RNGValidators.PractRand;
 
 namespace CACrypto.RNGValidators.Commons;
 
-internal abstract class RNGValidatorBase(CryptoMethodBase cryptoMethod, ValidatorOptions options)
+internal abstract class RNGValidatorBase(CryptoMethodBase cryptoMethod, ValidatorOptions? options = null) 
+    : CryptoValidatorBase(cryptoMethod, options)
 {
-    protected string ValidatorName => GetValidatorName();
-    protected int MaxAllowedDegreeOfParallelism => GetMaxAllowedDegreeOfParallelism();
-    protected CryptoMethodBase CryptoMethod { get; init; } = cryptoMethod;
-    protected ValidatorOptions Options { get; init; } = options;
-
-    protected abstract string GetValidatorName();
-    protected abstract int GetMaxAllowedDegreeOfParallelism();
     protected string GetIndividualReportFilename(string inputFileName)
     {
         var testedBinFile = new FileInfo(inputFileName);
@@ -25,31 +18,6 @@ internal abstract class RNGValidatorBase(CryptoMethodBase cryptoMethod, Validato
             throw new DirectoryNotFoundException();
         }
         return Path.Combine(testedBinFile.Directory.FullName, $"{testedBinFileName}_{ValidatorName}.txt");
-    }
-
-    public void Run()
-    {
-        var inputfiles = CryptoMethod.GenerateBinaryFiles(Options.InputFilesSize, Options.InputFilesCount, Options.DataDirectoryPath);
-        var individualReportFiles = GenerateIndividualValidationReports(inputfiles);
-        while (individualReportFiles.Count < Options.InputFilesCount)
-        {
-            inputfiles = CryptoMethod.GenerateBinaryFiles(Options.InputFilesSize, Options.InputFilesCount, Options.DataDirectoryPath);
-            individualReportFiles = GenerateIndividualValidationReports(inputfiles);
-        }
-
-        string formattedReport = CompileValidationReport(individualReportFiles);
-        
-        if (Options.WriteToConsole)
-        {
-            Console.Write(formattedReport);
-        }
-
-        if (Options.WriteToFile)
-        {
-            var dateTime = DateTime.Now.ToString("s").Replace(':', '-');
-            var reportFilename = string.Format($"{dateTime}_{ValidatorName}_{CryptoMethod.AlgorithmName}_{individualReportFiles.Count}.txt");
-            File.WriteAllText(Path.Combine(Options.DataDirectoryPath, reportFilename), formattedReport);
-        }
     }
 
     protected abstract string? GenerateIndividualReportFile(string inputFilename);
@@ -89,6 +57,27 @@ internal abstract class RNGValidatorBase(CryptoMethodBase cryptoMethod, Validato
         return individualReportFiles;
     }
 
+    protected override string CompileValidationReport()
+    {
+        var inputfiles = CryptoMethod.GenerateBinaryFiles(Options.InputSampleSize, Options.InputSamplesCount, Options.DataDirectoryPath);
+        var individualReportFiles = GenerateIndividualValidationReports(inputfiles);
+        while (individualReportFiles.Count < Options.InputSamplesCount)
+        {
+            inputfiles = CryptoMethod.GenerateBinaryFiles(Options.InputSampleSize, Options.InputSamplesCount, Options.DataDirectoryPath);
+            individualReportFiles = GenerateIndividualValidationReports(inputfiles);
+        }
+
+        return CompileValidationReport(individualReportFiles);
+    }
 
     protected abstract string CompileValidationReport(IEnumerable<string> individualReportFiles);
+
+    protected override ValidatorOptions GetDefaultValidatorOptions()
+    {
+        return new ValidatorOptions
+        {
+            InputSampleSize = SampleSize.TenMegaBytes,
+            InputSamplesCount = 1000
+        };
+    }
 }
