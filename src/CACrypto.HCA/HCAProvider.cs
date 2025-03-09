@@ -2,7 +2,7 @@
 
 namespace CACrypto.HCA;
 
-public class HCAProvider : PermutiveCACryptoMethodBase
+public class HCAProvider : PermutiveCACryptoProviderBase
 {
     public HCAProvider() : base(algorithmName: HCACrypto.Name) { }
 
@@ -40,14 +40,14 @@ public class HCAProvider : PermutiveCACryptoMethodBase
         }
     }
 
-    public override byte[] EncryptAsSingleBlock(byte[] plainText, Rule[] mainRules, Rule[] borderRules)
+    public override byte[] EncryptAsSingleBlock(byte[] plainText, Rule[] mainRules, Rule[] borderRules, int[]? bufferArray = null)
     {
-        return HCACrypto.BlockEncrypt(plainText, mainRules, borderRules, iterations: HCACrypto.BlockSizeInBits);
+        return HCACrypto.BlockEncrypt(plainText, mainRules, borderRules, bufferArray);
     }
 
     public override byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules)
     {
-        return HCACrypto.BlockDecrypt(cipherText, mainRules, borderRules, iterations: HCACrypto.BlockSizeInBits);
+        return HCACrypto.BlockDecrypt(cipherText, mainRules, borderRules);
     }
 
     public override int GetDefaultBlockSizeInBits()

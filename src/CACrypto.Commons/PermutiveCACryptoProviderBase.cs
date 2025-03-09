@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 namespace CACrypto.Commons;
 
-public abstract class PermutiveCACryptoMethodBase(string algorithmName) : CryptoMethodBase(algorithmName)
+public abstract class PermutiveCACryptoProviderBase(string algorithmName) : CryptoProviderBase(algorithmName)
 {
     public abstract Rule[] DeriveMainRulesFromKey(PermutiveCACryptoKey cryptoKey);
     public abstract Rule[] DeriveBorderRulesFromKey(PermutiveCACryptoKey cryptoKey);
@@ -194,20 +194,20 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
     }
     protected abstract PermutiveCACryptoKey BuildKey(byte[] keyBytes, ToggleDirection toggleDirection);
 
-    public abstract byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules);
-    public byte[] EncryptAsSingleBlock(byte[] plainText, PermutiveCACryptoKey cryptoKey)
+    public abstract byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, int[]? bufferArray = null);
+    public byte[] EncryptAsSingleBlock(byte[] plainText, PermutiveCACryptoKey cryptoKey, int[]? bufferArray = null)
     {
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        return EncryptAsSingleBlock(plainText, mainRules, borderRules);
+        return EncryptAsSingleBlock(plainText, mainRules, borderRules, bufferArray);
     }
-    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key)
+    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key, int[]? bufferArray = null)
     {
         var permutiveKey = (key as PermutiveCACryptoKey);
         return permutiveKey is null 
             ? throw new ArgumentException("Invalid Key Type")
-            : EncryptAsSingleBlock(plaintext, permutiveKey);
+            : EncryptAsSingleBlock(plaintext, permutiveKey, bufferArray);
     }
 
     public abstract byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules);
@@ -230,10 +230,11 @@ public abstract class PermutiveCACryptoMethodBase(string algorithmName) : Crypto
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
         var plainText = Util.GetSecureRandomByteArray(defaultBlockSizeInBytes);
+        var bufferArray = new int[8 * plainText.Length];
         var executions = sequenceSizeInBytes / defaultBlockSizeInBytes;
         for (int executionIdx = 0; executionIdx < executions; ++executionIdx)
         {
-            var cipherText = EncryptAsSingleBlock(plainText, mainRules, borderRules);
+            var cipherText = EncryptAsSingleBlock(plainText, mainRules, borderRules, bufferArray);
 
             for (int byteIdx = 0; byteIdx < defaultBlockSizeInBytes; ++byteIdx)
             {

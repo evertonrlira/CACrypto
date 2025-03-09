@@ -5,10 +5,10 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.Avalanche;
 
-internal abstract class AvalancheValidatorBase(IEnumerable<CryptoMethodBase> cryptoMethods, ValidatorOptions? opt)
+internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? opt)
     : CryptoValidatorBase(cryptoMethods, opt)
 {
-    protected override string CompileValidationReport(CryptoMethodBase cryptoMethod)
+    protected override string CompileValidationReport(CryptoProviderBase cryptoMethod)
     {
         var plaintextSet = Util.GetSecureRandomByteArrays(Options.InputSampleSize, Options.InputSamplesCount);
 
@@ -29,7 +29,7 @@ internal abstract class AvalancheValidatorBase(IEnumerable<CryptoMethodBase> cry
     protected abstract CryptoKey GetNextKey(CryptoKey originalKey);
     protected abstract byte[] GetNextPlaintext(byte[] originalPlaintext);
 
-    private string CompileValidationReport(CryptoMethodBase cryptoMethod, IEnumerable<byte[]> disturbanceResults)
+    private string CompileValidationReport(CryptoProviderBase cryptoMethod, IEnumerable<byte[]> disturbanceResults)
     {
         var culture = System.Globalization.CultureInfo.CreateSpecificCulture("en-US");
 

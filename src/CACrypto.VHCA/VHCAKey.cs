@@ -8,7 +8,7 @@ public class VHCAKey : PermutiveCACryptoKey
 
     public static VHCAKey GenerateRandomKey(int? blockSize = null, ToggleDirection? toggleDirection = null)
     {
-        blockSize ??= VHCACrypto.BlockSizeInBytes;
+        blockSize ??= VHCACrypto.DefaultBlockSizeInBytes;
         toggleDirection ??= Util.GetRandomToggleDirection();
 
         var keyBytes = Util.GetSecureRandomByteArray(VHCACrypto.KeyBitsToRuleFactor * blockSize.Value);
@@ -17,7 +17,7 @@ public class VHCAKey : PermutiveCACryptoKey
 
     public override bool IsValid()
     {
-        var blockSizeInBytes = VHCACrypto.BlockSizeInBytes;
+        var blockSizeInBytes = VHCACrypto.DefaultBlockSizeInBytes;
         var keyPart01 = Util.ByteArrayToBinaryArray(Bytes[0..(2*blockSizeInBytes)]);
         var keyPart02 = Util.ByteArrayToBinaryArray(Bytes[blockSizeInBytes..]);
         var keyPart03 = Util.ByteArrayToBinaryArray([..Bytes[(2*blockSizeInBytes)..], ..Bytes[..blockSizeInBytes]]);

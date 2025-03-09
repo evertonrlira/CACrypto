@@ -6,12 +6,13 @@ namespace CACrypto.Tests;
 internal static class CommonTests
 {
     public static void EncryptDecryptAsSingleBlock_ShouldRetrieveOriginalText(
-        PermutiveCACryptoMethodBase cryptoMethod, 
-        int textSizeInBytes)
+        PermutiveCACryptoProviderBase cryptoMethod, 
+        int textSizeInBytes,
+        ToggleDirection direction)
     {
         // Arrange
         var originalText = Util.GetSecureRandomByteArray(textSizeInBytes);
-        var cryptoKey = cryptoMethod.GenerateRandomKey(textSizeInBytes);
+        var cryptoKey = cryptoMethod.GenerateRandomKey(textSizeInBytes, direction);
         // Act
         var cipherText = cryptoMethod.EncryptAsSingleBlock(originalText, cryptoKey);
         cipherText.Should().NotEqual(originalText);
@@ -21,7 +22,7 @@ internal static class CommonTests
     }
 
     public static void EncryptDecryptMultipleBlocks_ShouldRetrieveOriginalText(
-        PermutiveCACryptoMethodBase cryptoMethod, 
+        PermutiveCACryptoProviderBase cryptoMethod, 
         int textSizeInBytes, 
         OperationMode operationMode)
     {

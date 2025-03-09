@@ -11,7 +11,7 @@ namespace CACrypto.Tests;
 [TestClass]
 public class VHCATests
 {
-    public PermutiveCACryptoMethodBase _cryptoMethod;
+    public PermutiveCACryptoProviderBase _cryptoMethod;
 
     public VHCATests()
     {
@@ -20,11 +20,13 @@ public class VHCATests
 
     [TestMethod]
     [Theory]
-    [InlineData(SampleSize.DefaultBlockSize)]
-    [InlineData(SampleSize.OneKiloByte)]
-    public void EncryptDecryptAsSingleBlock_ShouldRetrieveOriginalText(int textSize)
+    [InlineData(SampleSize.DefaultBlockSize, ToggleDirection.Left)]
+    [InlineData(SampleSize.DefaultBlockSize, ToggleDirection.Right)]
+    [InlineData(SampleSize.OneKiloByte, ToggleDirection.Left)]
+    [InlineData(SampleSize.OneKiloByte, ToggleDirection.Right)]
+    public void EncryptDecryptAsSingleBlock_ShouldRetrieveOriginalText(int textSize, ToggleDirection direction)
     {
-        CommonTests.EncryptDecryptAsSingleBlock_ShouldRetrieveOriginalText(_cryptoMethod, textSize);
+        CommonTests.EncryptDecryptAsSingleBlock_ShouldRetrieveOriginalText(_cryptoMethod, textSize, direction);
     }
 
     [TestMethod]

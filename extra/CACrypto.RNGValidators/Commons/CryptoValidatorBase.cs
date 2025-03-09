@@ -7,19 +7,19 @@ internal abstract class CryptoValidatorBase
 {
     protected string ValidatorName => GetValidatorName();
     protected int MaxAllowedDegreeOfParallelism => GetMaxAllowedDegreeOfParallelism();
-    protected IEnumerable<CryptoMethodBase> CryptoMethods { get; init; }
+    protected IEnumerable<CryptoProviderBase> CryptoMethods { get; init; }
     protected ValidatorOptions Options { get; init; }
 
     protected abstract string GetValidatorName();
     protected abstract int GetMaxAllowedDegreeOfParallelism();
 
-    internal CryptoValidatorBase(CryptoMethodBase cryptoMethod, ValidatorOptions? options = null)
+    internal CryptoValidatorBase(CryptoProviderBase cryptoMethod, ValidatorOptions? options = null)
     {
         CryptoMethods = [cryptoMethod];
         Options = options ?? GetDefaultValidatorOptions();
     }
 
-    internal CryptoValidatorBase(IEnumerable<CryptoMethodBase> cryptoMethods, ValidatorOptions? options = null)
+    internal CryptoValidatorBase(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? options = null)
     {
         CryptoMethods = cryptoMethods;
         Options = options ?? GetDefaultValidatorOptions();
@@ -37,7 +37,7 @@ internal abstract class CryptoValidatorBase
     private string CompileValidationReport()
     {
         var sb = new StringBuilder();
-        foreach (CryptoMethodBase cryptoMethod in CryptoMethods)
+        foreach (CryptoProviderBase cryptoMethod in CryptoMethods)
         {
             var methodReport = CompileValidationReport(cryptoMethod);
             sb.Append(methodReport);
@@ -74,5 +74,5 @@ internal abstract class CryptoValidatorBase
         return outputDir;
     }
 
-    protected abstract string CompileValidationReport(CryptoMethodBase cryptoMethod);
+    protected abstract string CompileValidationReport(CryptoProviderBase cryptoMethod);
 }

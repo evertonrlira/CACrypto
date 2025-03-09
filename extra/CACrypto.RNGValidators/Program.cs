@@ -17,7 +17,7 @@ public static class Program
         // (new PractRandValidator(new HCAProvider(), validatorOptions)).Run();
         // (new NISTValidator(new VHCAProvider(), validatorOptions)).Run();
         // (new PractRandValidator(new VHCAProvider(), validatorOptions)).Run();
-        IEnumerable<CryptoMethodBase> methodsForAvalanche = [
+        IEnumerable<CryptoProviderBase> methodsForAvalanche = [
             new VHCAProvider(),
             new HCAProvider(),
             new AESProvider()

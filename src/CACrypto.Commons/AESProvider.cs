@@ -2,12 +2,12 @@
 
 namespace CACrypto.Commons;
 
-public class AESProvider : CryptoMethodBase
+public class AESProvider : CryptoProviderBase
 {
     const int _BlockSizeInBytes = 16;
     const int _BlockSizeInBits = 128;
 
-    public AESProvider() : base(algorithmName: "AES") { }
+    public AESProvider() : base(methodName: "AES") { }
 
     static byte[] EncryptStringToBytes_Aes(byte[] data, ICryptoTransform encryptor)
     {
@@ -94,7 +94,7 @@ public class AESProvider : CryptoMethodBase
         return _BlockSizeInBytes;
     }
 
-    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key)
+    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key, int[]? bufferArray = null)
     {
         var defaultBlockSizeInBits = GetDefaultBlockSizeInBits();
         var defaultBlockSizeInBytes = GetDefaultBlockSizeInBytes();

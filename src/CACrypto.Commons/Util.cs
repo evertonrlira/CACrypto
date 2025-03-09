@@ -1,6 +1,8 @@
 ﻿using MersenneTwister;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using static System.Net.Mime.MediaTypeNames;
+using System.Runtime.Intrinsics.X86;
 
 namespace CACrypto.Commons
 {
@@ -429,7 +431,7 @@ namespace CACrypto.Commons
             return result;
         }
 
-        public static byte[] BinaryArrayToByteArray(int[] binaryArray)
+        public static byte[] BinaryArrayToByteArray(ReadOnlySpan<int> binaryArray)
         {
             int length = binaryArray.Length;
             if (length % 8 != 0)
@@ -715,8 +717,7 @@ namespace CACrypto.Commons
 
         public static int OppositeBit(int bit)
         {
-            if (bit == 0) return 1;
-            else return 0;
+            return (bit == 0) ? 1 : 0;
         }
 
         public static int CircularIdx(int x, int window)
@@ -760,11 +761,16 @@ namespace CACrypto.Commons
             (firstObj, secondObj) = (secondObj, firstObj);
         }
 
+        public static void Swap<T>(ref Span<T> firstObj, ref Span<T> secondObj)
+        {
+            var swapAux = firstObj;
+            firstObj = secondObj;
+            secondObj = swapAux;
+        }
+
         internal static void Swap<T>(IList<T> source, int firstIndex, int secondIndex)
         {
-            var temp = source[firstIndex];
-            source[firstIndex] = source[secondIndex];
-            source[secondIndex] = temp;
+            (source[secondIndex], source[firstIndex]) = (source[firstIndex], source[secondIndex]);
         }
 
         public static string GetCurrentProjectDirectoryPath()

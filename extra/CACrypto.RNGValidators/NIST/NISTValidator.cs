@@ -4,15 +4,15 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.NIST;
 
-internal class NISTValidator(IEnumerable<CryptoMethodBase> cryptoMethods, ValidatorOptions? opt = null) 
+internal class NISTValidator(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? opt = null) 
     : RNGValidatorBase(cryptoMethods, opt)
 {
     protected override string GetValidatorName() => "NIST";
     protected override int GetMaxAllowedDegreeOfParallelism() => 5;
 
-    public NISTValidator(CryptoMethodBase cryptoMethod, ValidatorOptions? opt = null) : this([cryptoMethod], opt) {  }
+    public NISTValidator(CryptoProviderBase cryptoMethod, ValidatorOptions? opt = null) : this([cryptoMethod], opt) {  }
 
-    protected override string CompileValidationReport(CryptoMethodBase cryptoMethod, IEnumerable<string> individualReportFiles)
+    protected override string CompileValidationReport(CryptoProviderBase cryptoMethod, IEnumerable<string> individualReportFiles)
     {
         var culture = System.Globalization.CultureInfo.CreateSpecificCulture("en-US");
 

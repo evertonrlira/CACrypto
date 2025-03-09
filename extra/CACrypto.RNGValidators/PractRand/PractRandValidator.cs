@@ -4,15 +4,15 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.PractRand;
 
-internal class PractRandValidator(IEnumerable<CryptoMethodBase> cryptoMethods, ValidatorOptions? opt = null) 
+internal class PractRandValidator(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? opt = null) 
     : RNGValidatorBase(cryptoMethods, opt)
 {
     protected override string GetValidatorName() => "PractRand";
     protected override int GetMaxAllowedDegreeOfParallelism() => Environment.ProcessorCount;
 
-    public PractRandValidator(CryptoMethodBase cryptoMethod, ValidatorOptions? opt = null) : this([cryptoMethod], opt) { }
+    public PractRandValidator(CryptoProviderBase cryptoMethod, ValidatorOptions? opt = null) : this([cryptoMethod], opt) { }
 
-    protected override string CompileValidationReport(CryptoMethodBase cryptoMethod, IEnumerable<string> individualReportFiles)
+    protected override string CompileValidationReport(CryptoProviderBase cryptoMethod, IEnumerable<string> individualReportFiles)
     {
         var culture = System.Globalization.CultureInfo.CreateSpecificCulture("en-US");
 

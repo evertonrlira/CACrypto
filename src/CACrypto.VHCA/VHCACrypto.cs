@@ -1,5 +1,6 @@
 ﻿using CACrypto.Commons;
-using System.Linq;
+using System;
+using System.Threading.Tasks;
 
 namespace CACrypto.VHCA;
 
@@ -7,13 +8,12 @@ public class VHCACrypto
 {
     public const string Name = "VHCA";
     public const int KeySizeInBytes = 48;
-    public const int BlockSizeInBytes = 16;
-    public const int BlockSizeInBits = 128;
+    public const int DefaultBlockSizeInBytes = 16;
+    public const int DefaultBlockSizeInBits = 128;
     public const int RuleLength = 512;
     public const int KeyBitsToRuleFactor = 3; // 3 bits are needed to represent 1 rule
     private static readonly int Radius = 1;
     private static readonly int DoubleRadius = 2;
-    private static readonly int BinaryCutMask = 0x7FFFFFFF >> 30 - DoubleRadius;
 
     public static Rule[] DeriveMainRulesFromKey(int[] keyBits, ToggleDirection direction)
     {
@@ -50,77 +50,84 @@ public class VHCACrypto
         return borderRules;
     }
 
-    public static byte[] BlockEncrypt(byte[] plainText, PermutiveCACryptoKey cryptoKey)
+    public byte[] BlockEncrypt(byte[] plainText, PermutiveCACryptoKey cryptoKey, int[] bufferArray = null)
     {
         Rule[] mainRules = DeriveMainRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
         Rule[] borderRules = DeriveBorderRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
 
-        return BlockEncrypt(plainText, mainRules, borderRules);
+        return BlockEncrypt(plainText, mainRules, borderRules, bufferArray);
     }
 
-    public static byte[] BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
+    public static byte[] BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, int[] bufferArray = null)
     {
-        int[] preImage = Util.ByteArrayToBinaryArray(initialLattice);
+        var preImage = Util.ByteArrayToBinaryArray(initialLattice);
         int latticeLength = preImage.Length;
         int iterations = latticeLength;
-        int[] image = new int[latticeLength];
-        int[] finalLattice;
+        var image = bufferArray ?? new int[latticeLength];
 
         var toggleDirection = mainRules[0].IsLeftSensible ? ToggleDirection.Left : ToggleDirection.Right;
         var borderLength = DoubleRadius;
-        int borderLeftCellIdx = latticeLength - borderLength;
+        int borderLeftmostCellIdx = latticeLength - borderLength;
+        int borderShift = toggleDirection == ToggleDirection.Left ? DoubleRadius : -DoubleRadius;
         for (int iterationIdx = 0; iterationIdx < iterations; ++iterationIdx)
         {
-            SequentialEvolveBits(preImage, mainRules, borderRules, borderLeftCellIdx, image);
+            SequentialEvolveLattice(preImage, mainRules, borderRules, borderLeftmostCellIdx, image);
 
             // Prepare for Next Iteration
             Util.Swap(ref image, ref preImage);
 
-            if (toggleDirection == ToggleDirection.Left)
-            {
-                borderLeftCellIdx = Util.CircularIdx(borderLeftCellIdx + DoubleRadius, latticeLength);
-            }
-            else
-            {
-                borderLeftCellIdx = Util.CircularIdx(borderLeftCellIdx - DoubleRadius, latticeLength);
-            }
+            borderLeftmostCellIdx = Util.CircularIdx(borderLeftmostCellIdx + borderShift, latticeLength);
         }
-        finalLattice = preImage;
-        return Util.BinaryArrayToByteArray(finalLattice);
+        return Util.BinaryArrayToByteArray(preImage);
     }
 
-    private static int[] SequentialEvolveBits(int[] preImage, Rule[] mainRules, Rule[] borderRules, int imageBorderLeftCellIdx, int[] image)
+    protected static void EvolveLatticeSlice(int[] preImage, Rule[] mainRules, Rule[] borderRules, int imageBorderLeftCellIdx, int[] image, int sliceStartInclusiveIdx, int sliceEndExclusiveIdx)
     {
-        var latticeLength = preImage.Length;
-
-        // Initial Bits
-        var currentBitInPreImageIdx = 0;
-        var currentBitInImageIdx = 0;
-        var neighSum = 0;
-
-        for (int initialBitsTraverseIdx = 0; initialBitsTraverseIdx < DoubleRadius; ++initialBitsTraverseIdx)
+        bool isBorderCell;
+        int blockSize = preImage.Length;
+        int startingBinaryFactor = 1 << DoubleRadius;
+        int binaryFactor;
+        for (int centralCellIdx = sliceStartInclusiveIdx; centralCellIdx < sliceEndExclusiveIdx; centralCellIdx++)
         {
-            neighSum |= preImage[currentBitInPreImageIdx];
-            neighSum <<= 1;
-            currentBitInImageIdx = currentBitInPreImageIdx;
-            currentBitInPreImageIdx = Util.CircularIdx(currentBitInPreImageIdx + 1, latticeLength);
-        }
-
-        foreach (var _ in preImage)
-        {
-            neighSum |= preImage[currentBitInPreImageIdx];
-            if (currentBitInImageIdx == imageBorderLeftCellIdx || currentBitInImageIdx == imageBorderLeftCellIdx + 1)
+            binaryFactor = startingBinaryFactor;
+            int neighSum = 0;
+            for (int neighCellShiftIdx = -Radius; neighCellShiftIdx <= Radius; neighCellShiftIdx++)
             {
-                image[currentBitInImageIdx] = borderRules[currentBitInImageIdx].ResultBitForNeighSum[neighSum];
+                neighSum += binaryFactor * preImage[Util.CircularIdx(centralCellIdx + neighCellShiftIdx, blockSize)];
+                binaryFactor >>= 1;
+            }
+
+            isBorderCell = (centralCellIdx >= imageBorderLeftCellIdx && centralCellIdx < imageBorderLeftCellIdx + DoubleRadius);
+            if (isBorderCell)
+            {
+                image[centralCellIdx] = borderRules[centralCellIdx].ResultBitForNeighSum[neighSum];
             }
             else
             {
-                image[currentBitInImageIdx] = mainRules[currentBitInImageIdx].ResultBitForNeighSum[neighSum];
+                image[centralCellIdx] = mainRules[centralCellIdx].ResultBitForNeighSum[neighSum];
             }
-            neighSum <<= 1; neighSum &= BinaryCutMask;
-            currentBitInImageIdx = currentBitInPreImageIdx;
-            currentBitInPreImageIdx = Util.CircularIdx(currentBitInPreImageIdx + 1, latticeLength);
         }
+    }
+
+    private static int[] SequentialEvolveLattice(int[] preImage, Rule[] mainRules, Rule[] borderRules, int imageBorderLeftCellIdx, int[] image)
+    {
+        EvolveLatticeSlice(preImage, mainRules, borderRules, imageBorderLeftCellIdx, image, 0, preImage.Length);
+        return image;
+    }
+
+    private static int[] ParallelEvolveLattice(int[] preImage, Rule[] mainRules, Rule[] borderRules, int imageBorderLeftCellIdx, int[] image)
+    {
+        var latticeLength = preImage.Length;
+        var slices = Environment.ProcessorCount;
+        var sliceSize = latticeLength / slices;
+
+        Parallel.For(0, slices, (sliceIdx) =>
+        {
+            var sliceStartInclusiveIdx = sliceIdx * sliceSize;
+            var sliceEndExclusiveIdx = ((sliceIdx + 1) * sliceSize);
+            EvolveLatticeSlice(preImage, mainRules, borderRules, imageBorderLeftCellIdx, image, sliceStartInclusiveIdx, sliceEndExclusiveIdx);
+        });
+
         return image;
     }
 
@@ -182,6 +189,7 @@ public class VHCACrypto
         int neighSum = 0;
         int toggleDirectionShift = toggleDirection == ToggleDirection.Left ? -1 : 1;
         int currentBitInImageIdx = Util.CircularIdx(currentBitInPreImageIdx + (toggleDirection == ToggleDirection.Left ? 1 : -1), latticeLength);
+        int BinaryCutMask = 0x7FFFFFFF >> 30 - DoubleRadius;
         foreach (var _ in image)
         {
             if (currentBitInImageIdx == preImageBorderLeftCellIdx || currentBitInImageIdx == preImageBorderLeftCellIdx + 1)

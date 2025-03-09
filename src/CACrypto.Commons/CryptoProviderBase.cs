@@ -2,12 +2,12 @@
 
 namespace CACrypto.Commons;
 
-public abstract class CryptoMethodBase(string algorithmName)
+public abstract class CryptoProviderBase(string methodName)
 {
-    public string AlgorithmName { get; init; } = algorithmName;
+    public string MethodName { get; init; } = methodName;
 
-    public string GetMethodName() => AlgorithmName;
-    public string GetFolderNameForGeneratedFiles() => AlgorithmName;
+    public string GetMethodName() => MethodName;
+    public string GetFolderNameForGeneratedFiles() => MethodName;
     public abstract int GetDefaultBlockSizeInBits();
     public abstract int GetDefaultBlockSizeInBytes();
     public abstract int GetDefaultKeySizeInBytes();
@@ -63,5 +63,5 @@ public abstract class CryptoMethodBase(string algorithmName)
         return dirCombined;
     }
 
-    public abstract byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key);
+    public abstract byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key, int[]? bufferArray = null);
 }
