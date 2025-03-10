@@ -90,7 +90,7 @@ internal class NISTProxy
         var executionOutputTxt = cmd.StandardOutput.ReadToEnd();
         var sucessfulOutput =
             executionOutputTxt.Contains("Statistical Testing Complete!!!!!!!!!!!!")
-            && !executionOutputTxt.Contains("ERROR") 
+            && !executionOutputTxt.Contains("ERROR")
             && !executionOutputTxt.Contains("Unable");
 
         if (!sucessfulOutput)

@@ -13,14 +13,14 @@ public class VHCAProvider : PermutiveCACryptoProviderBase
         return VHCAKey.GenerateRandomKey(blockSizeInBytes, toggleDirection);
     }
 
-    public override byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
+    public override void EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, byte[] finalLattice, int latticeSize)
     {
-        return VHCACrypto.BlockEncrypt(initialLattice, mainRules, borderRules);
+        VHCACrypto.BlockEncrypt(initialLattice, mainRules, borderRules, finalLattice, latticeSize);
     }
 
-    public override byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules)
+    public override void DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules, byte[] plaintext, int blockSize)
     {
-        return VHCACrypto.BlockDecrypt(cipherText, mainRules, borderRules);
+        VHCACrypto.BlockDecrypt(cipherText, mainRules, borderRules, plaintext, blockSize);
     }
 
     public override Rule[] DeriveMainRulesFromKey(PermutiveCACryptoKey cryptoKey)

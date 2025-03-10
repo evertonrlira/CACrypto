@@ -1,9 +1,4 @@
 ﻿using MersenneTwister;
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using static System.Net.Mime.MediaTypeNames;
-using System.Runtime.Intrinsics.X86;
-using System.Buffers;
 
 namespace CACrypto.Commons
 {
@@ -21,42 +16,8 @@ namespace CACrypto.Commons
             return blockCount;
         }
 
-        internal static Rule[] ConvertOctalArrayToR1RuleArray(int[] octalArray, bool isLeftDirected = true)
-        {
-            Rule[] directedRules;
-            if (isLeftDirected)
-            {
-                directedRules = new Rule[] {
-                new Rule("01111000"), // R30
-                new Rule("10110100"), // R45
-                new Rule("11010010"), // R75
-                new Rule("00011110"), // R120
-                new Rule("11100001"), // R135
-                new Rule("00101101"), // R180
-                new Rule("01001011"), // R210
-                new Rule("10000111")  // R225
-            };
-            }
-            else
-            {
-                directedRules = new Rule[] {
-                new Rule("01101010"), // R86
-                new Rule("10011010"), // R89
-                new Rule("10100110"), // R101
-                new Rule("01010110"), // R106
-                new Rule("10101001"), // R149
-                new Rule("01011001"), // R154
-                new Rule("01100101"), // R166
-                new Rule("10010101")  // R169
-            };
-            }
-            return octalArray.Select(octal => directedRules[octal]).ToArray();
-        }
-
         public static byte[] CloneByteArray(Span<byte> oldArray)
         {
-            //var newArray = new byte[oldArray.Length];
-            //Buffer.BlockCopy(oldArray, 0, newArray, 0, oldArray.Length);
             return oldArray.ToArray();
         }
 
@@ -65,60 +26,6 @@ namespace CACrypto.Commons
             var uniqueTempDir = Path.GetFullPath(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
             Directory.CreateDirectory(uniqueTempDir);
             return uniqueTempDir;
-        }
-
-        public static void CopyByteArrayTo(byte[] originArray, byte[] dstArray)
-        {
-            Buffer.BlockCopy(originArray, 0, dstArray, 0, originArray.Length);
-        }
-
-        public static int[] CopyLatticeExpandingForWrap(int[] oldLattice, int expansionSize)
-        {
-            var newLattice = new int[oldLattice.Length + 2 * expansionSize];
-            Buffer.BlockCopy(oldLattice, 0, newLattice, expansionSize * sizeof(int), oldLattice.Length * sizeof(int));
-
-            for (int wrapIdx = 0; wrapIdx < expansionSize; ++wrapIdx)
-            {
-                newLattice[wrapIdx] = newLattice[newLattice.Length - (2 * expansionSize) + wrapIdx];
-                newLattice[newLattice.Length - expansionSize + wrapIdx] = newLattice[(2 * expansionSize) + wrapIdx];
-            }
-            return newLattice;
-        }
-
-        public static int[] CopyLatticeShrinking(int[] oldLattice, int shrinkageSize)
-        {
-            var newLattice = new int[oldLattice.Length - 2 * shrinkageSize];
-            Buffer.BlockCopy(oldLattice, shrinkageSize * sizeof(int), newLattice, 0, newLattice.Length * sizeof(int));
-            return newLattice;
-        }
-
-        public static int GetBitParityFromOctalArray(int[] octalArray)
-        {
-            bool parity = false;
-            foreach (int octal in octalArray)
-            {
-                if (octal == 1 || octal == 2 || octal == 4 || octal == 7)
-                    parity = !parity;
-            }
-            return parity ? 1 : 0;
-        }
-
-        // Usage: Benchmark(() => { /* your code */ }, 100);
-        public static void Benchmark(Action act, int iterations, bool newLine = true)
-        {
-            GC.Collect();
-            act.Invoke(); // run once outside of loop to avoid initialization costs
-            Stopwatch sw = Stopwatch.StartNew();
-            for (int i = 0; i < iterations; i++)
-            {
-                act.Invoke();
-            }
-            sw.Stop();
-            if (newLine)
-                Console.WriteLine(((double)sw.ElapsedMilliseconds / (double)iterations).ToString() + " ms");
-            else
-                Console.Write(((double)sw.ElapsedMilliseconds / (double)iterations).ToString() + " ms" + Environment.NewLine);
-            //Console.WriteLine((sw.ElapsedMilliseconds).ToString() + " ms");
         }
 
         public static void CopyDirectory(string sourceDirectory, string targetDirectory)
@@ -148,15 +55,15 @@ namespace CACrypto.Commons
             }
         }
 
-        public static byte[] XOR(byte[] w1, byte[] w2)
+        public static byte[] XOR(byte[] w1, byte[] w2, int blockSize)
         {
             if (w1.Length != w2.Length)
             {
                 throw new Exception("Words to be XORed had different size");
             }
 
-            byte[] xorArray = new byte[w1.Length];
-            for (int idx = 0; idx < xorArray.Length; ++idx)
+            byte[] xorArray = new byte[blockSize];
+            for (int idx = 0; idx < blockSize; ++idx)
             {
                 xorArray[idx] = (byte)(w1[idx] ^ w2[idx]);
             }
@@ -244,21 +151,10 @@ namespace CACrypto.Commons
             return (-1 * (float)entropySum) / windowSize;
         }
 
-
         public static double PopulationStandardDeviation(IEnumerable<float> values)
         {
             double avg = values.Average();
             return Math.Sqrt(values.Average(v => Math.Pow(v - avg, 2)));
-        }
-
-        public static int[] StringToBitArray(string str)
-        {
-            return str.Select(c => (int)c - 48).ToArray();
-        }
-
-        public static string BinaryArrayToString(int[] bitArray, char falseChar = '0', char trueChar = '1')
-        {
-            return String.Join("", bitArray.Select(a => (a == 0 ? falseChar : trueChar)).ToArray());
         }
 
         public static void FillArrayWithRandomData(byte[] array)
@@ -266,7 +162,7 @@ namespace CACrypto.Commons
             Randoms.FastestInt32.NextBytes(array);
         }
 
-        public static void ByteArrayToBinaryArray(Span<byte> byteArray, int[] outputBinaryArray)
+        public static void ByteArrayToBinaryArray(ReadOnlySpan<byte> byteArray, int[] outputBinaryArray)
         {
             int length = byteArray.Length;
 
@@ -286,40 +182,24 @@ namespace CACrypto.Commons
             return binaryArray;
         }
 
-        public static byte[] BinaryArrayToByteArray(ReadOnlySpan<int> binaryArray)
+        public static void BinaryArrayToByteArray(ReadOnlySpan<int> input, byte[] output, int outputSize)
         {
-            int length = binaryArray.Length;
+            int length = input.Length;
             if (length % 8 != 0)
                 throw new ArgumentException("The binary array does not have a Length that can allows conversion to byte array");
 
-            var byteLength = length / 8;
-            var byteArray = new byte[byteLength]; // TODO: Optimize
-            for (int i = 0; i < byteLength; i++)
+            for (int byteIdx = 0; byteIdx < outputSize; byteIdx++)
             {
-                var byteValue = 0;
-                var basePos = i * 8;
-                if (binaryArray[basePos] == 1) { byteValue += 128; }
-                if (binaryArray[basePos + 1] == 1) { byteValue += 64; }
-                if (binaryArray[basePos + 2] == 1) { byteValue += 32; }
-                if (binaryArray[basePos + 3] == 1) { byteValue += 16; }
-                if (binaryArray[basePos + 4] == 1) { byteValue += 8; }
-                if (binaryArray[basePos + 5] == 1) { byteValue += 4; }
-                if (binaryArray[basePos + 6] == 1) { byteValue += 2; }
-                if (binaryArray[basePos + 7] == 1) { byteValue += 1; }
-                byteArray[i] = (byte)byteValue;
+                var byteValue = 0x0;
+                for (int bitIdx = 0; bitIdx < 8; bitIdx++)
+                {
+                    if (input[8 * byteIdx + bitIdx] == 1)
+                    {
+                        byteValue |= BytePosValues[bitIdx];
+                    }                    
+                }
+                output[byteIdx] = (byte)byteValue;
             }
-            return byteArray;
-        }
-
-        public static T? GetRandomElement<T>(IEnumerable<T> list)
-        {
-            // If there are no elements in the collection, return the default value of T
-            if (!list.Any())
-                return default;
-
-            // Guids as well as the hash code for a guid will be unique and thus random        
-            int hashCode = Math.Abs(Guid.NewGuid().GetHashCode());
-            return list.ElementAt(hashCode % list.Count());
         }
 
         public static int GetRandomNumber(int minValue, int maxValueExclusive)
@@ -368,13 +248,13 @@ namespace CACrypto.Commons
 
         public static int[] LeftShift(Span<int> array)
         {
-            Span<int> slice = [..array[1..], array[0]];
+            Span<int> slice = [.. array[1..], array[0]];
             return slice.ToArray();
         }
 
         public static int[] RightShift(Span<int> array)
         {
-            Span<int> slice = [array[^1], ..array[0..^1]];
+            Span<int> slice = [array[^1], .. array[0..^1]];
             return slice.ToArray();
         }
 
@@ -397,43 +277,9 @@ namespace CACrypto.Commons
             }
         }
 
-        public static void Shuffle<T>(IList<T> source)
-        {
-            var length = source.Count;
-
-            for (var currentIndex = 0; currentIndex < length; currentIndex++)
-            {
-                var swapIndex = Randoms.Next(currentIndex, length);
-                Swap(source, currentIndex, swapIndex);
-            }
-        }
-
-        public static void ShuffleStrong<T>(IList<T> source)
-        {
-            var length = source.Count;
-
-            for (var currentIndex = 0; currentIndex < length; currentIndex++)
-            {
-                var swapIndex = Randoms.Next(currentIndex, length);
-                Swap(source, currentIndex, swapIndex);
-            }
-        }
-
         public static void Swap<T>(ref T firstObj, ref T secondObj)
         {
             (firstObj, secondObj) = (secondObj, firstObj);
-        }
-
-        public static void Swap<T>(ref Span<T> firstObj, ref Span<T> secondObj)
-        {
-            var swapAux = firstObj;
-            firstObj = secondObj;
-            secondObj = swapAux;
-        }
-
-        internal static void Swap<T>(IList<T> source, int firstIndex, int secondIndex)
-        {
-            (source[secondIndex], source[firstIndex]) = (source[firstIndex], source[secondIndex]);
         }
 
         public static string GetCurrentProjectDirectoryPath()
@@ -447,15 +293,6 @@ namespace CACrypto.Commons
             return currentDirectory?.FullName ?? string.Empty;
         }
 
-        public static void SetBit(byte[] self, int index, bool value)
-        {
-            int byteIndex = index / 8;
-            int bitIndex = index % 8;
-            byte mask = (byte)(1 << bitIndex);
-
-            self[byteIndex] = (byte)(value ? (self[byteIndex] | mask) : (self[byteIndex] & ~mask));
-        }
-
         public static void ToggleBit(Span<byte> self, int index)
         {
             int byteIndex = index / 8;
@@ -463,15 +300,6 @@ namespace CACrypto.Commons
             byte mask = (byte)(1 << bitIndex);
 
             self[byteIndex] ^= mask;
-        }
-
-        public static bool GetBit(byte[] self, int index)
-        {
-            int byteIndex = index / 8;
-            int bitIndex = index % 8;
-            byte mask = (byte)(1 << bitIndex);
-
-            return (self[byteIndex] & mask) != 0;
         }
 
         public static ToggleDirection GetRandomToggleDirection()

@@ -28,7 +28,7 @@ public abstract class CryptoProviderBase(string methodName)
     {
         ConcurrentBag<string> fileBag;
         string methodOutputFolder = GetOutputFolderForBinaryFiles(outputDir);
-        
+
         var dirInfo = new DirectoryInfo(methodOutputFolder);
         var preexistingFiles = dirInfo.GetFiles().Where(f => f.Length == sequenceSize);
         if (preexistingFiles.Count() >= fileCount)
@@ -63,5 +63,5 @@ public abstract class CryptoProviderBase(string methodName)
         return dirCombined;
     }
 
-    public abstract byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key);
+    public abstract void EncryptAsSingleBlock(byte[] plaintext, CryptoKey key, byte[] ciphertext, int blockSize);
 }

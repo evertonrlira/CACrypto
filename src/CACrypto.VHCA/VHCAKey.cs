@@ -1,6 +1,5 @@
 ﻿using CACrypto.Commons;
 using System;
-using System.Buffers;
 
 namespace CACrypto.VHCA;
 

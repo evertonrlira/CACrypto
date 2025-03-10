@@ -11,17 +11,21 @@ internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> c
 {
     protected override string CompileValidationReport(CryptoProviderBase cryptoMethod)
     {
-        var plaintextSet = Util.GetSecureRandomByteArrays(Options.InputSampleSize, Options.InputSamplesCount);
+        var blockSize = Options.InputSampleSize;
+        var plaintextSet = Util.GetSecureRandomByteArrays(blockSize, Options.InputSamplesCount);
 
         var disturbanceSet = new ConcurrentBag<byte[]>();
         Parallel.ForEach(plaintextSet, originalPlaintext =>
         {
+            var originalCiphertext = new byte[blockSize];
+            var disturbedCiphertext = new byte[blockSize];
+
             var originalKey = cryptoMethod.GenerateRandomKey();
-            var originalCiphertext = cryptoMethod.EncryptAsSingleBlock(originalPlaintext, originalKey);
+            cryptoMethod.EncryptAsSingleBlock(originalPlaintext, originalKey, originalCiphertext, blockSize);
             var nextPlaintext = GetNextPlaintext(originalPlaintext);
             var nextKey = GetNextKey(originalKey);
-            var disturbedCiphertext = cryptoMethod.EncryptAsSingleBlock(nextPlaintext, nextKey);
-            var disturbance = Util.XOR(originalCiphertext, disturbedCiphertext);
+            cryptoMethod.EncryptAsSingleBlock(nextPlaintext, nextKey, disturbedCiphertext, blockSize);
+            var disturbance = Util.XOR(originalCiphertext, disturbedCiphertext, blockSize);
             disturbanceSet.Add(disturbance);
         });
         return CompileValidationReport(cryptoMethod, disturbanceSet);

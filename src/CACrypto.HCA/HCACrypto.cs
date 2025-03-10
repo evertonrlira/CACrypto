@@ -13,7 +13,7 @@ public class HCACrypto
     private static readonly int Radius = 4;
     private static readonly int DoubleRadius = 8;
 
-    public static byte[] BlockEncrypt(byte[] plainText, PermutiveCACryptoKey cryptoKey)
+    public static byte[] BlockEncrypt(byte[] plainText, PermutiveCACryptoKey cryptoKey, byte[] ciphertext, int blockSize)
     {
         Rule[] mainRules;
         Rule[] borderRules;
@@ -28,12 +28,12 @@ public class HCACrypto
             borderRules = Rule.GenerateRightSensibleMarginRules(RuleLength);
         }
 
-        return BlockEncrypt(plainText, mainRules, borderRules);
+        return BlockEncrypt(plainText, mainRules, borderRules, ciphertext, blockSize);
     }
 
-    public static byte[] BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
+    public static byte[] BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, byte[] finalLattice, int blockSize)
     {
-        int latticeLengthInBits = 8 * initialLattice.Length;
+        int latticeLengthInBits = 8 * blockSize;
         var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         Util.ByteArrayToBinaryArray(initialLattice, image);
@@ -48,10 +48,10 @@ public class HCACrypto
             Util.Swap(ref image, ref preImage);
         }
 
-        var result = Util.BinaryArrayToByteArray(image);
+        Util.BinaryArrayToByteArray(image, finalLattice, blockSize);
         ArrayPool<int>.Shared.Return(image, true);
         ArrayPool<int>.Shared.Return(preImage, true);
-        return result;
+        return finalLattice;
     }
 
     private static void PreImageCalculusBits(int[] image, Rule mainRule, Rule borderRule, int execIdx, int[] preImage, int latticeSize)
@@ -151,9 +151,9 @@ public class HCACrypto
         }
     }
 
-    public static byte[] BlockDecrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
+    public static byte[] BlockDecrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, byte[] finalLattice, int latticeSize)
     {
-        int latticeLengthInBits = 8 * initialLattice.Length;
+        int latticeLengthInBits = 8 * latticeSize;
         var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         Util.ByteArrayToBinaryArray(initialLattice, preImage);
@@ -172,10 +172,10 @@ public class HCACrypto
 
             borderLeftmostCellIdx = Util.CircularIdx(borderLeftmostCellIdx + borderShift, latticeLengthInBits);
         }
-        var result = Util.BinaryArrayToByteArray(preImage);
+        Util.BinaryArrayToByteArray(preImage, finalLattice, latticeSize);
         ArrayPool<int>.Shared.Return(image, true);
         ArrayPool<int>.Shared.Return(preImage, true);
-        return result;
+        return finalLattice;
     }
 
     private static int[] SequentialEvolveLattice(int[] preImage, Rule mainRule, Rule borderRule, int imageBorderLeftCellIdx, int[] image, int latticeSize)

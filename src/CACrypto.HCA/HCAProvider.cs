@@ -18,13 +18,13 @@ public class HCAProvider : PermutiveCACryptoProviderBase
 
     public override Rule[] DeriveMainRulesFromKey(PermutiveCACryptoKey cryptoKey)
     {
-        if (cryptoKey.Direction == ToggleDirection.Left) 
-        { 
-            return Rule.GetAllLeftSensibleRulesByShiftingNuclei(cryptoKey.Bits); 
+        if (cryptoKey.Direction == ToggleDirection.Left)
+        {
+            return Rule.GetAllLeftSensibleRulesByShiftingNuclei(cryptoKey.Bits);
         }
-        else 
-        { 
-            return Rule.GetAllRightSensibleRulesByShiftingNuclei(cryptoKey.Bits); 
+        else
+        {
+            return Rule.GetAllRightSensibleRulesByShiftingNuclei(cryptoKey.Bits);
         }
     }
 
@@ -40,14 +40,14 @@ public class HCAProvider : PermutiveCACryptoProviderBase
         }
     }
 
-    public override byte[] EncryptAsSingleBlock(byte[] plainText, Rule[] mainRules, Rule[] borderRules)
+    public override void EncryptAsSingleBlock(byte[] plainText, Rule[] mainRules, Rule[] borderRules, byte[] ciphertext, int blockSize)
     {
-        return HCACrypto.BlockEncrypt(plainText, mainRules, borderRules);
+        HCACrypto.BlockEncrypt(plainText, mainRules, borderRules, ciphertext, blockSize);
     }
 
-    public override byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules)
+    public override void DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules, byte[] plaintext, int blockSize)
     {
-        return HCACrypto.BlockDecrypt(cipherText, mainRules, borderRules);
+        HCACrypto.BlockDecrypt(cipherText, mainRules, borderRules, plaintext, blockSize);
     }
 
     public override int GetDefaultBlockSizeInBits()

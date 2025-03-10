@@ -1,4 +1,5 @@
-﻿using System.Buffers.Binary;
+﻿using System.Buffers;
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 
 namespace CACrypto.Commons;
@@ -8,13 +9,13 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
     public abstract Rule[] DeriveMainRulesFromKey(PermutiveCACryptoKey cryptoKey);
     public abstract Rule[] DeriveBorderRulesFromKey(PermutiveCACryptoKey cryptoKey);
 
-    public byte[] Encrypt(byte[] plainText, PermutiveCACryptoKey cryptoKey, byte[] initializationVector, OperationMode operationMode = OperationMode.CTR)
+    public byte[] Encrypt(byte[] plaintext, PermutiveCACryptoKey cryptoKey, byte[] initializationVector, OperationMode operationMode = OperationMode.CTR)
     {
         return operationMode switch
         {
-            OperationMode.ECB => Encrypt_ECB(plainText, cryptoKey),
-            OperationMode.CBC => Encrypt_CBC(plainText, cryptoKey, initializationVector),
-            OperationMode.CTR => Encrypt_CTR(plainText, cryptoKey, initializationVector),
+            OperationMode.ECB => Encrypt_ECB(plaintext, cryptoKey),
+            OperationMode.CBC => Encrypt_CBC(plaintext, cryptoKey, initializationVector),
+            OperationMode.CTR => Encrypt_CTR(plaintext, cryptoKey, initializationVector),
             _ => throw new CryptographicException($"Unsupported operation mode: {operationMode}"),
         };
     }
@@ -30,19 +31,23 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
 
         Parallel.For(0, blockCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (blockIdx) =>
         {
-            var newBlock = new byte[blockSize];
-            Buffer.BlockCopy(plainText, blockIdx * blockSize, newBlock, 0, blockSize);
+            var blockPlaintext = ArrayPool<byte>.Shared.Rent(blockSize);
+            var blockCiphertext = ArrayPool<byte>.Shared.Rent(blockSize);
+            Buffer.BlockCopy(plainText, blockIdx * blockSize, blockPlaintext, 0, blockSize);
 
-            newBlock = EncryptAsSingleBlock(newBlock, mainRules, borderRules);
-            Buffer.BlockCopy(newBlock, 0, cipherText, blockIdx * blockSize, blockSize);
+            EncryptAsSingleBlock(blockPlaintext, mainRules, borderRules, blockCiphertext, blockSize);
+            Buffer.BlockCopy(blockCiphertext, 0, cipherText, blockIdx * blockSize, blockSize);
+
+            ArrayPool<byte>.Shared.Return(blockPlaintext);
+            ArrayPool<byte>.Shared.Return(blockCiphertext);
         });
         return cipherText;
     }
 
-    private byte[] Encrypt_CBC(byte[] plainText, PermutiveCACryptoKey cryptoKey, byte[] initializationVector)
+    private byte[] Encrypt_CBC(byte[] plaintext, PermutiveCACryptoKey cryptoKey, byte[] initializationVector)
     {
         int blockSize = GetDefaultBlockSizeInBytes();
-        int blockCount = Util.CalculateBlockCount(plainText.Length, blockSize);
+        int blockCount = Util.CalculateBlockCount(plaintext.Length, blockSize);
         var cipherText = new byte[blockCount * blockSize];
         var xorVector = Util.CloneByteArray(initializationVector);
 
@@ -51,17 +56,21 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
 
         for (int blockIdx = 0; blockIdx < blockCount; ++blockIdx)
         {
-            var newBlock = new byte[blockSize];
-            Buffer.BlockCopy(plainText, blockIdx * blockSize, newBlock, 0, blockSize);
+            var blockPlaintext = ArrayPool<byte>.Shared.Rent(blockSize);
+            var blockCiphertext = ArrayPool<byte>.Shared.Rent(blockSize);
+            Buffer.BlockCopy(plaintext, blockIdx * blockSize, blockPlaintext, 0, blockSize);
 
             for (int byteIdx = 0; byteIdx < blockSize; ++byteIdx)
             {
-                newBlock[byteIdx] ^= xorVector[byteIdx];
+                blockPlaintext[byteIdx] ^= xorVector[byteIdx];
             }
 
-            newBlock = EncryptAsSingleBlock(newBlock, mainRules, borderRules);
-            Buffer.BlockCopy(newBlock, 0, xorVector, 0, blockSize);
-            Buffer.BlockCopy(newBlock, 0, cipherText, blockIdx * blockSize, blockSize);
+            EncryptAsSingleBlock(blockPlaintext, mainRules, borderRules, blockCiphertext, blockSize);
+            Buffer.BlockCopy(blockCiphertext, 0, xorVector, 0, blockSize);
+            Buffer.BlockCopy(blockCiphertext, 0, cipherText, blockIdx * blockSize, blockSize);
+
+            ArrayPool<byte>.Shared.Return(blockPlaintext);
+            ArrayPool<byte>.Shared.Return(blockCiphertext);
         }
         return cipherText;
     }
@@ -70,23 +79,25 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
     {
         int blockSize = GetDefaultBlockSizeInBytes();
         int blockCount = Util.CalculateBlockCount(plainText.Length, blockSize);
-        var paddedPlaintext = new Byte[blockCount * blockSize];
+        var paddedPlaintext = new byte[blockCount * blockSize];
         Buffer.BlockCopy(plainText, 0, paddedPlaintext, 0, plainText.Length);
 
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        var cipherText = new Byte[paddedPlaintext.Length];
+        var cipherText = new byte[paddedPlaintext.Length];
 
         Parallel.For(0, blockCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (counterIdx) =>
         {
-            var input = new Byte[blockSize];
-            BinaryPrimitives.WriteInt64BigEndian(input, counterIdx);
-            Buffer.BlockCopy(initializationVector, 0, input, blockSize / 2, blockSize / 2);
+            var blockPlaintext = ArrayPool<byte>.Shared.Rent(blockSize);
+            var blockCiphertext = ArrayPool<byte>.Shared.Rent(blockSize);
 
-            var encrypted = EncryptAsSingleBlock(input, mainRules, borderRules);
+            BinaryPrimitives.WriteInt64BigEndian(blockPlaintext, counterIdx);
+            Buffer.BlockCopy(initializationVector, 0, blockPlaintext, blockSize / 2, blockSize / 2);
 
-            var src01 = encrypted;
+            EncryptAsSingleBlock(blockPlaintext, mainRules, borderRules, blockCiphertext, blockSize);
+
+            var src01 = blockCiphertext;
             var src01BeginIdx = 0;
             var src02 = paddedPlaintext;
             var src02BeginIdx = counterIdx * blockSize;
@@ -94,6 +105,9 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
             var dst = cipherText;
             var dstBeginIdx = counterIdx * blockSize;
             Util.XOR(src01, src01BeginIdx, src02, src02BeginIdx, xorLength, dst, dstBeginIdx);
+
+            ArrayPool<byte>.Shared.Return(blockPlaintext);
+            ArrayPool<byte>.Shared.Return(blockCiphertext);
         });
         return cipherText;
     }
@@ -120,10 +134,15 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
 
         Parallel.For(0, blockCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (blockIdx) =>
         {
-            var newBlock = new byte[blockSize];
-            Buffer.BlockCopy(cipherText, blockIdx * blockSize, newBlock, 0, blockSize);
-            newBlock = DecryptAsSingleBlock(newBlock, mainRules, borderRules);
-            Buffer.BlockCopy(newBlock, 0, plainText, blockIdx * blockSize, blockSize);
+            var blockPlaintext = ArrayPool<byte>.Shared.Rent(blockSize);
+            var blockCiphertext = ArrayPool<byte>.Shared.Rent(blockSize);
+            Buffer.BlockCopy(cipherText, blockIdx * blockSize, blockCiphertext, 0, blockSize);
+
+            DecryptAsSingleBlock(blockCiphertext, mainRules, borderRules, blockPlaintext, blockSize);
+            Buffer.BlockCopy(blockPlaintext, 0, plainText, blockIdx * blockSize, blockSize);
+
+            ArrayPool<byte>.Shared.Return(blockPlaintext);
+            ArrayPool<byte>.Shared.Return(blockCiphertext);
         });
         return plainText;
     }
@@ -139,27 +158,25 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
 
         Parallel.For(0, blockCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (blockIdx) =>
         {
-            var newBlock = new byte[blockSize];
-            Buffer.BlockCopy(cipherText, blockIdx * blockSize, newBlock, 0, blockSize);
-            newBlock = DecryptAsSingleBlock(newBlock, mainRules, borderRules);
+            var blockPlaintext = ArrayPool<byte>.Shared.Rent(blockSize);
+            var blockCiphertext = ArrayPool<byte>.Shared.Rent(blockSize);
 
-            byte[] xorVector;
-            if (blockIdx != 0)
-            {
-                xorVector = new byte[blockSize];
-                Buffer.BlockCopy(cipherText, (blockIdx - 1) * blockSize, xorVector, 0, blockSize);
-            }
-            else
-            {
-                xorVector = Util.CloneByteArray(initializationVector);
-            }
+            Buffer.BlockCopy(cipherText, blockIdx * blockSize, blockCiphertext, 0, blockSize);
+            DecryptAsSingleBlock(blockCiphertext, mainRules, borderRules, blockPlaintext, blockSize);
+
+            var xorVector = blockIdx == 0
+                ? initializationVector
+                : cipherText.AsSpan((blockIdx - 1) * blockSize, blockSize);
 
             for (int byteIdx = 0; byteIdx < blockSize; ++byteIdx)
             {
-                newBlock[byteIdx] ^= xorVector[byteIdx];
+                blockPlaintext[byteIdx] ^= xorVector[byteIdx];
             }
 
-            Buffer.BlockCopy(newBlock, 0, plainText, blockIdx * blockSize, blockSize);
+            Buffer.BlockCopy(blockPlaintext, 0, plainText, blockIdx * blockSize, blockSize);
+
+            ArrayPool<byte>.Shared.Return(blockPlaintext);
+            ArrayPool<byte>.Shared.Return(blockCiphertext);
         });
         return plainText;
     }
@@ -194,29 +211,27 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
     }
     protected abstract PermutiveCACryptoKey BuildKey(byte[] keyBytes, ToggleDirection toggleDirection);
 
-    public abstract byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules);
-    public byte[] EncryptAsSingleBlock(byte[] plainText, PermutiveCACryptoKey cryptoKey)
+    public abstract void EncryptAsSingleBlock(byte[] plainText, Rule[] mainRules, Rule[] borderRules, byte[] ciphertext, int blockSize);
+    public void EncryptAsSingleBlock(byte[] plainText, PermutiveCACryptoKey cryptoKey, byte[] ciphertext, int blockSize)
     {
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        return EncryptAsSingleBlock(plainText, mainRules, borderRules);
+        EncryptAsSingleBlock(plainText, mainRules, borderRules, ciphertext, blockSize);
     }
-    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key)
+    public override void EncryptAsSingleBlock(byte[] plaintext, CryptoKey key, byte[] ciphertext, int blockSize)
     {
-        var permutiveKey = (key as PermutiveCACryptoKey);
-        return permutiveKey is null 
-            ? throw new ArgumentException("Invalid Key Type")
-            : EncryptAsSingleBlock(plaintext, permutiveKey);
+        var permutiveKey = (key as PermutiveCACryptoKey) ?? throw new ArgumentException("Invalid Key Type");
+        EncryptAsSingleBlock(plaintext, permutiveKey, ciphertext, blockSize);
     }
 
-    public abstract byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules);
-    public byte[] DecryptAsSingleBlock(byte[] cipherText, PermutiveCACryptoKey cryptoKey)
+    public abstract void DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules, byte[] plaintext, int blockSize);
+    public void DecryptAsSingleBlock(byte[] cipherText, PermutiveCACryptoKey cryptoKey, byte[] plaintext, int blockSize)
     {
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        return DecryptAsSingleBlock(cipherText, mainRules, borderRules);
+        DecryptAsSingleBlock(cipherText, mainRules, borderRules, plaintext, blockSize);
     }
 
     public override byte[] GeneratePseudoRandomSequence(int sequenceSizeInBytes)
@@ -229,20 +244,25 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        var plaintext = new byte[defaultBlockSizeInBytes];
+        var plaintext = ArrayPool<byte>.Shared.Rent(defaultBlockSizeInBytes);
         Util.FillArrayWithRandomData(plaintext);
+        var ciphertext = ArrayPool<byte>.Shared.Rent(defaultBlockSizeInBytes);
         var executions = sequenceSizeInBytes / defaultBlockSizeInBytes;
         for (int executionIdx = 0; executionIdx < executions; ++executionIdx)
         {
-            var cipherText = EncryptAsSingleBlock(plaintext, mainRules, borderRules);
+            EncryptAsSingleBlock(plaintext, mainRules, borderRules, ciphertext, defaultBlockSizeInBytes);
 
             for (int byteIdx = 0; byteIdx < defaultBlockSizeInBytes; ++byteIdx)
             {
-                bw.Write((byte)(cipherText[byteIdx] ^ plaintext[byteIdx]));
+                bw.Write((byte)(ciphertext[byteIdx] ^ plaintext[byteIdx]));
             }
-            plaintext = cipherText;
+
+            Util.Swap(ref plaintext, ref ciphertext);
         }
         bw.Flush();
+
+        ArrayPool<byte>.Shared.Return(plaintext);
+        ArrayPool<byte>.Shared.Return(ciphertext);
 
         return stream.ToArray();
     }

@@ -58,8 +58,8 @@ internal abstract class CryptoValidatorBase
             var outputDirectory = GetOutputFolderForReports(Options.DataDirectoryPath);
 
             var dateTime = DateTime.Now.ToString("s").Replace(':', '-');
-            var cryptoMethods = CryptoMethods.Count() == 1 
-                ? $"{CryptoMethods.First().GetMethodName()}" 
+            var cryptoMethods = CryptoMethods.Count() == 1
+                ? $"{CryptoMethods.First().GetMethodName()}"
                 : "Multiple";
             var reportFilename = string.Format($"Report_{ValidatorName}_{cryptoMethods}_{dateTime}.txt");
             File.WriteAllText(Path.Combine(outputDirectory, reportFilename), formattedReport);

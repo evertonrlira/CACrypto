@@ -51,17 +51,17 @@ public class VHCACrypto
         return borderRules;
     }
 
-    public static byte[] BlockEncrypt(byte[] plainText, PermutiveCACryptoKey cryptoKey)
+    public static void BlockEncrypt(byte[] plainText, PermutiveCACryptoKey cryptoKey, byte[] ciphertext, int blockSize)
     {
         Rule[] mainRules = DeriveMainRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
         Rule[] borderRules = DeriveBorderRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
 
-        return BlockEncrypt(plainText, mainRules, borderRules);
+        BlockEncrypt(plainText, mainRules, borderRules, ciphertext, blockSize);
     }
 
-    public static byte[] BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
+    public static void BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, byte[] finalLattice, int latticeSize)
     {
-        int latticeLengthInBits = 8 * initialLattice.Length;
+        int latticeLengthInBits = 8 * latticeSize;
         var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         Util.ByteArrayToBinaryArray(initialLattice, preImage);
@@ -79,10 +79,9 @@ public class VHCACrypto
 
             borderLeftmostCellIdx = Util.CircularIdx(borderLeftmostCellIdx + borderShift, latticeLengthInBits);
         }
-        var result = Util.BinaryArrayToByteArray(preImage);
+        Util.BinaryArrayToByteArray(preImage, finalLattice, latticeSize);
         ArrayPool<int>.Shared.Return(image, true);
         ArrayPool<int>.Shared.Return(preImage, true);
-        return result;
     }
 
     protected static void EvolveLatticeSlice(int[] preImage, Rule[] mainRules, Rule[] borderRules, int imageBorderLeftCellIdx, int[] image, int sliceStartInclusiveIdx, int sliceEndExclusiveIdx, int latticeSize)
@@ -106,7 +105,7 @@ public class VHCACrypto
             }
 
             try
-            {            
+            {
                 isBorderCell = (centralCellIdx >= imageBorderLeftCellIdx && centralCellIdx < imageBorderLeftCellIdx + DoubleRadius);
                 if (isBorderCell)
                 {
@@ -145,17 +144,17 @@ public class VHCACrypto
         return image;
     }
 
-    public static byte[] BlockDecrypt(byte[] cipherText, PermutiveCACryptoKey cryptoKey)
+    public static byte[] BlockDecrypt(byte[] cipherText, PermutiveCACryptoKey cryptoKey, byte[] plaintext, int blockSize)
     {
         Rule[] mainRules = DeriveMainRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
         Rule[] borderRules = DeriveBorderRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
 
-        return BlockDecrypt(cipherText, mainRules, borderRules);
+        return BlockDecrypt(cipherText, mainRules, borderRules, plaintext, blockSize);
     }
 
-    public static byte[] BlockDecrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
+    public static byte[] BlockDecrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, byte[] finalLattice, int latticeSize)
     {
-        int latticeLengthInBits = 8 * initialLattice.Length;
+        int latticeLengthInBits = 8 * latticeSize;
         var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         Util.ByteArrayToBinaryArray(initialLattice, image);
@@ -173,10 +172,10 @@ public class VHCACrypto
             // Prepare for Next Iteration
             Util.Swap(ref image, ref preImage);
         }
-        var result = Util.BinaryArrayToByteArray(image);
+        Util.BinaryArrayToByteArray(image, finalLattice, latticeSize);
         ArrayPool<int>.Shared.Return(image, true);
         ArrayPool<int>.Shared.Return(preImage, true);
-        return result;
+        return finalLattice;
     }
 
     private static void PreImageCalculusBits(int[] image, Rule[] mainRules, Rule[] borderRules, int preImageBorderLeftCellIdx, int[] preImage, ToggleDirection toggleDirection, int latticeSize)

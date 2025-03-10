@@ -4,7 +4,7 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.PractRand;
 
-internal class PractRandValidator(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? opt = null) 
+internal class PractRandValidator(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? opt = null)
     : RNGValidatorBase(cryptoMethods, opt)
 {
     protected override string GetValidatorName() => "PractRand";

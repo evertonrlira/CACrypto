@@ -9,7 +9,8 @@ namespace CACrypto.Benchmarks;
 [MemoryDiagnoser]
 public class MethodsBenchmarker
 {
-    private byte[] _plaintextBytes = null!;
+    private byte[] _inputBytes = null!;
+    private byte[] _outputBytes = null!;
     private HCAProvider _hca = null!;
     private HCAKey _hcaKey = null!;
     private VHCAKey _vhcaKey = null!;
@@ -18,70 +19,71 @@ public class MethodsBenchmarker
     [GlobalSetup]
     public void Setup()
     {
-        _plaintextBytes = Encoding.ASCII.GetBytes("Avocado is a delicious and nutritive fruit.");
+        _inputBytes = Encoding.ASCII.GetBytes("Avocado is a delicious and nutritive fruit.");
+        _outputBytes = new byte[_inputBytes.Length];
         _hca = new HCAProvider();
         _hcaKey = (HCAKey)_hca.GenerateRandomKey();
         _vhca = new VHCAProvider();
-        _vhcaKey = (VHCAKey)_vhca.GenerateRandomKey(_plaintextBytes.Length);
+        _vhcaKey = (VHCAKey)_vhca.GenerateRandomKey(_inputBytes.Length);
     }
 
     [Benchmark]
-    public byte[] EncryptUsingHCA()
+    public void EncryptUsingHCA()
     {
-        return _hca.EncryptAsSingleBlock(_plaintextBytes, _hcaKey);
+        _hca.EncryptAsSingleBlock(_inputBytes, _hcaKey, _outputBytes, _inputBytes.Length);
     }
 
     [Benchmark]
-    public byte[] DecryptUsingHCA()
+    public void DecryptUsingHCA()
     {
-        return _hca.DecryptAsSingleBlock(_plaintextBytes, _hcaKey);
+        _hca.DecryptAsSingleBlock(_inputBytes, _hcaKey, _outputBytes, _inputBytes.Length);
     }
 
     [Benchmark]
-    public byte[] GenerateSingleBlockSequenceUsingHCA()
+    public void GenerateSingleBlockSequenceUsingHCA()
     {
-        return _hca.GeneratePseudoRandomSequence(SampleSize.DefaultBlockSize);
+        _hca.GeneratePseudoRandomSequence(SampleSize.DefaultBlockSize);
     }
 
     [Benchmark]
-    public byte[] GenerateRandomSmallSequenceUsingHCA()
+    public void GenerateRandomSmallSequenceUsingHCA()
     {
-        return _hca.GeneratePseudoRandomSequence(SampleSize.SixtyFourKB);
+        _hca.GeneratePseudoRandomSequence(SampleSize.SixtyFourKB);
     }
 
     [Benchmark]
-    public byte[] GenerateRandom1MBSequenceUsingHCA()
+    public void GenerateRandom1MBSequenceUsingHCA()
     {
-        return _hca.GeneratePseudoRandomSequence(SampleSize.OneMegaByte);
+        _hca.GeneratePseudoRandomSequence(SampleSize.OneMegaByte);
     }
 
     [Benchmark]
-    public byte[] EncryptUsingVHCA()
+    public void EncryptUsingVHCA()
     {
-        return _vhca.EncryptAsSingleBlock(_plaintextBytes, _vhcaKey);
+        _vhca.EncryptAsSingleBlock(_inputBytes, _vhcaKey, _outputBytes, _inputBytes.Length);
     }
 
     [Benchmark]
-    public byte[] DecryptUsingVHCA()
+    public void DecryptUsingVHCA()
     {
-        return _vhca.DecryptAsSingleBlock(_plaintextBytes, _vhcaKey);
+        _vhca.DecryptAsSingleBlock(_inputBytes, _vhcaKey, _outputBytes, _inputBytes.Length);
     }
 
     [Benchmark]
-    public byte[] GenerateSingleBlockSequenceUsingVHCA()
+    public void GenerateSingleBlockSequenceUsingVHCA()
     {
-        return _vhca.GeneratePseudoRandomSequence(SampleSize.DefaultBlockSize);
+        _vhca.GeneratePseudoRandomSequence(SampleSize.DefaultBlockSize);
     }
 
     [Benchmark]
-    public byte[] GenerateRandomSmallSequenceUsingVHCA()
+    public void GenerateRandomSmallSequenceUsingVHCA()
     {
-        return _vhca.GeneratePseudoRandomSequence(SampleSize.SixtyFourKB);
+        _vhca.GeneratePseudoRandomSequence(SampleSize.SixtyFourKB);
     }
 
     [Benchmark]
-    public byte[] GenerateRandom1MBSequenceUsingVHCA()
+    public void GenerateRandom1MBSequenceUsingVHCA()
     {
-        return _vhca.GeneratePseudoRandomSequence(SampleSize.OneMegaByte);
+        _vhca.GeneratePseudoRandomSequence(SampleSize.OneMegaByte);
     }
 }

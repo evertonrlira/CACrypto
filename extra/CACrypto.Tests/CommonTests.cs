@@ -1,31 +1,32 @@
 ﻿using CACrypto.Commons;
 using FluentAssertions;
-using System.Buffers;
 
 namespace CACrypto.Tests;
 
 internal static class CommonTests
 {
     public static void EncryptDecryptAsSingleBlock_ShouldRetrieveOriginalText(
-        PermutiveCACryptoProviderBase cryptoMethod, 
+        PermutiveCACryptoProviderBase cryptoMethod,
         int textSizeInBytes,
         ToggleDirection direction)
     {
         // Arrange
         var originalText = new byte[textSizeInBytes];
         Util.FillArrayWithRandomData(originalText);
+        var cipherText = new byte[textSizeInBytes];
+        var recoveredText = new byte[textSizeInBytes];
         var cryptoKey = cryptoMethod.GenerateRandomKey(textSizeInBytes, direction);
         // Act
-        var cipherText = cryptoMethod.EncryptAsSingleBlock(originalText, cryptoKey);
+        cryptoMethod.EncryptAsSingleBlock(originalText, cryptoKey, cipherText, textSizeInBytes);
         cipherText.Should().NotEqual(originalText);
-        var recoveredText = cryptoMethod.DecryptAsSingleBlock(cipherText, cryptoKey);
+        cryptoMethod.DecryptAsSingleBlock(cipherText, cryptoKey, recoveredText, textSizeInBytes);
         // Assert
         recoveredText.Should().Equal(originalText);
     }
 
     public static void EncryptDecryptMultipleBlocks_ShouldRetrieveOriginalText(
-        PermutiveCACryptoProviderBase cryptoMethod, 
-        int textSizeInBytes, 
+        PermutiveCACryptoProviderBase cryptoMethod,
+        int textSizeInBytes,
         OperationMode operationMode)
     {
         // Arrange

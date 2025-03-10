@@ -1,9 +1,8 @@
 ﻿using System.Buffers;
-using System.Security.Cryptography;
 
 namespace CACrypto.Commons
 {
-    public abstract class PermutiveCACryptoKey(byte[] bytes, ToggleDirection toggleDirection) 
+    public abstract class PermutiveCACryptoKey(byte[] bytes, ToggleDirection toggleDirection)
         : CryptoKey(bytes, new Dictionary<string, byte[]> {
             { DirectionProperty, new byte[] { (byte)toggleDirection } }
         })

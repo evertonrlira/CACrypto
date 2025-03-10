@@ -2,7 +2,7 @@
 
 namespace CACrypto.RNGValidators.Commons;
 
-internal abstract class RNGValidatorBase(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? options = null) 
+internal abstract class RNGValidatorBase(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? options = null)
     : CryptoValidatorBase(cryptoMethods, options)
 {
     protected string GetIndividualReportFilename(string inputFileName)

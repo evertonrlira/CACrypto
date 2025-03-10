@@ -26,18 +26,6 @@ public class Rule
         }
     }
 
-    public static int VonNeumannNeighborhoodLengthIn1D(int radius)
-    {
-        return (2 * radius) + 1;
-    }
-
-    public override string ToString()
-    {
-        var binaryRuleRepresentationStr = string.Concat(RuleBits.Reverse());
-        var ruleNumber = Convert.ToInt32(binaryRuleRepresentationStr, 2);
-        return string.Format("Rule {0}: [ {1} ]", ruleNumber, string.Join(" | ", RuleBits.Select(cell => cell)));
-    }
-
     internal static bool IsValidRule(string bits)
     {
         double ruleLengthLogDec = (Math.Log(bits.Length) / Math.Log(2));
@@ -55,34 +43,6 @@ public class Rule
         return true;
     }
 
-    internal static bool IsValidRuleNuclei(string bits)
-    {
-        double nucleiLengthLogDec = (Math.Log(bits.Length) / Math.Log(2));
-        if (nucleiLengthLogDec % 1 != 0)
-            return false;
-
-        int nucleiLengthLog = (int)nucleiLengthLogDec;
-
-        if (nucleiLengthLog % 2 == 1 || nucleiLengthLog < 2)
-            return false;
-
-        if (bits.Any(c => c != '0' && c != '1'))
-            return false;
-
-        return true;
-    }
-
-    public static Rule[] GetRulesFromNuclei(int[] nuclei, bool generateLeftSensible, bool generateRightSensible)
-    {
-        if (generateLeftSensible && generateRightSensible)
-            return new Rule[] { Rule.GenerateLeftSensibleRule(nuclei), Rule.GenerateRightSensibleRule(nuclei) };
-        else if (generateLeftSensible)
-            return new Rule[] { Rule.GenerateLeftSensibleRule(nuclei) };
-        else if (generateRightSensible)
-            return new Rule[] { Rule.GenerateRightSensibleRule(nuclei) };
-        else
-            return new Rule[] { };
-    }
 
     public static Rule GenerateLeftSensibleRule(Span<int> nuclei)
     {
@@ -106,40 +66,9 @@ public class Rule
         return new Rule(ruleBits);
     }
 
-    public static IEnumerable<Rule> LoadFromFile(string relativePath)
-    {
-        var lines = File.ReadAllLines(relativePath);
-        List<Rule> rules = new List<Rule>();
-        foreach (var line in lines)
-        {
-            if (Rule.IsValidRule(line.Trim()))
-            {
-                var rule = new Rule(line.Trim());
-                rules.Add(rule);
-            }
-        }
-        return rules;
-    }
-
-    public static IEnumerable<Rule> LoadFromFileAndCreateAllPermutations(string relativePath)
-    {
-        var lines = File.ReadAllLines(relativePath);
-        var i = Util.Permutations(lines).ToList().Distinct();
-        List<Rule> rules = new List<Rule>();
-        foreach (var line in lines)
-        {
-            if (Rule.IsValidRule(line.Trim()))
-            {
-                var rule = new Rule(line.Trim());
-                rules.Add(rule);
-            }
-        }
-        return rules;
-    }
-
     public static Rule[] GetAllLeftSensibleRulesByShiftingNuclei(Span<int> nuclei)
     {
-        #region Pré-Condições
+        #region Preconditions
         double nucleiLengthLogDec = (Math.Log(nuclei.Length) / Math.Log(2));
         if (nucleiLengthLogDec % 1 != 0)
             throw new Exception("Nuclei length must be a power of two");
@@ -148,7 +77,7 @@ public class Rule
 
         if (nucleiLengthLog % 2 == 1)
             throw new Exception("Invalid nuclei length. No equivalent radius");
-        #endregion /* Pré-Condições */
+        #endregion /* Preconditions */
 
         Rule[] mainRules = new Rule[nuclei.Length];
         Span<int> temp = nuclei;
@@ -187,16 +116,10 @@ public class Rule
     {
         var zeros = Enumerable.Repeat(0, ruleLength / 2);
         var ones = Enumerable.Repeat(1, ruleLength / 2);
-        return new Rule[] {
+        return [
             new Rule(Enumerable.Concat(zeros, ones).ToArray()),
             new Rule(Enumerable.Concat(ones, zeros).ToArray())
-        };
-    }
-
-    public static Rule[] GenerateLeftSensibleMarginRulesForRadius(int radius)
-    {
-        int ruleLength = Rule.GetRuleLengthForRadius(radius);
-        return GenerateLeftSensibleMarginRules(ruleLength);
+        ];
     }
 
     public static Rule[] GenerateRightSensibleMarginRules(int ruleLength)
@@ -207,53 +130,8 @@ public class Rule
         };
     }
 
-    public static Rule[] GenerateRightSensibleMarginRulesForRadius(int radius)
-    {
-        int ruleLength = Rule.GetRuleLengthForRadius(radius);
-        return GenerateRightSensibleMarginRules(ruleLength);
-    }
-
-    public static int GetRadiusForRuleLength(int ruleLength)
-    {
-        double ruleLengthLogDec = (Math.Log(ruleLength) / Math.Log(2));
-        if (ruleLengthLogDec % 1 != 0)
-            throw new Exception("Rule length must be a power of two");
-
-        int ruleLengthLog = (int)ruleLengthLogDec;
-
-        if (ruleLengthLog % 2 == 0)
-            throw new Exception("Invalid rule length. No equivalent radius");
-
-        return (ruleLengthLog - 1) / 2;
-    }
-
     public static int GetRuleLengthForRadius(int radius)
     {
         return (int)Math.Pow(2, 2 * radius + 1);
-    }
-
-    public static int GetNucleiLengthForRadius(int radius)
-    {
-        return GetRuleLengthForRadius(radius) / 2;
-    }
-
-    public static int[] GetNucleiFromRule(Rule rule)
-    {
-        int nucleiLength = rule.Length / 2;
-        int[] nuclei = new int[nucleiLength];
-        if (rule.IsLeftSensible)
-        {
-            Array.Copy(rule.ResultBitForNeighSum, nuclei, nucleiLength);
-            return nuclei;
-        }
-        else if (rule.IsRightSensible)
-        {
-            for (int idx = 0; idx < nucleiLength; ++idx)
-            {
-                nuclei[idx] = rule.ResultBitForNeighSum[2 * idx];
-            }
-            return nuclei;
-        }
-        throw new Exception("Rule has no nuclei");
     }
 }
