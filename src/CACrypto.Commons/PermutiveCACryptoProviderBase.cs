@@ -194,20 +194,20 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
     }
     protected abstract PermutiveCACryptoKey BuildKey(byte[] keyBytes, ToggleDirection toggleDirection);
 
-    public abstract byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, int[]? bufferArray = null);
-    public byte[] EncryptAsSingleBlock(byte[] plainText, PermutiveCACryptoKey cryptoKey, int[]? bufferArray = null)
+    public abstract byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules);
+    public byte[] EncryptAsSingleBlock(byte[] plainText, PermutiveCACryptoKey cryptoKey)
     {
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        return EncryptAsSingleBlock(plainText, mainRules, borderRules, bufferArray);
+        return EncryptAsSingleBlock(plainText, mainRules, borderRules);
     }
-    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key, int[]? bufferArray = null)
+    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key)
     {
         var permutiveKey = (key as PermutiveCACryptoKey);
         return permutiveKey is null 
             ? throw new ArgumentException("Invalid Key Type")
-            : EncryptAsSingleBlock(plaintext, permutiveKey, bufferArray);
+            : EncryptAsSingleBlock(plaintext, permutiveKey);
     }
 
     public abstract byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules);
@@ -229,18 +229,18 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
 
-        var plainText = Util.GetSecureRandomByteArray(defaultBlockSizeInBytes);
-        var bufferArray = new int[8 * plainText.Length];
+        var plaintext = new byte[defaultBlockSizeInBytes];
+        Util.FillArrayWithRandomData(plaintext);
         var executions = sequenceSizeInBytes / defaultBlockSizeInBytes;
         for (int executionIdx = 0; executionIdx < executions; ++executionIdx)
         {
-            var cipherText = EncryptAsSingleBlock(plainText, mainRules, borderRules, bufferArray);
+            var cipherText = EncryptAsSingleBlock(plaintext, mainRules, borderRules);
 
             for (int byteIdx = 0; byteIdx < defaultBlockSizeInBytes; ++byteIdx)
             {
-                bw.Write((byte)(cipherText[byteIdx] ^ plainText[byteIdx]));
+                bw.Write((byte)(cipherText[byteIdx] ^ plaintext[byteIdx]));
             }
-            plainText = cipherText;
+            plaintext = cipherText;
         }
         bw.Flush();
 

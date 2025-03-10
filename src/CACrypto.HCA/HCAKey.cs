@@ -1,4 +1,5 @@
 ﻿using CACrypto.Commons;
+using System.Buffers;
 
 namespace CACrypto.HCA;
 
@@ -10,13 +11,14 @@ public class HCAKey : PermutiveCACryptoKey
     {
         toggleDirection ??= Util.GetRandomToggleDirection();
 
-        var keyBytes = Util.GetSecureRandomByteArray(HCACrypto.KeySizeInBytes);
+        var keyBytes = new byte[HCACrypto.KeySizeInBytes];
+        Util.FillArrayWithRandomData(keyBytes);
         return new HCAKey(keyBytes, toggleDirection.Value);
     }
 
     public override bool IsValid()
     {
-        return Util.SpatialEntropyCalculusForBinary(Util.ByteArrayToBinaryArray(Bytes)) > 0.75;
+        return IsValid(Bytes);
     }
 
     public override CryptoKey ChangeRandomBit()

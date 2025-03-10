@@ -31,16 +31,18 @@ public class AESProvider : CryptoProviderBase
         using var stream = new MemoryStream();
         var defaultBlockSizeInBits = GetDefaultBlockSizeInBits();
         var defaultBlockSizeInBytes = GetDefaultBlockSizeInBytes();
-        var initialSeed = Util.GetSecureRandomByteArray(defaultBlockSizeInBytes);
+        var initialSeed = new byte[defaultBlockSizeInBytes];
+        Util.FillArrayWithRandomData(initialSeed);
         var cryptoKey = GenerateRandomKey();
-        var IV = Util.GetSecureRandomByteArray(16);
+        var IV = new byte[defaultBlockSizeInBytes];
+        Util.FillArrayWithRandomData(IV);
 
         WriteNewBinaryStream(stream, initialSeed, cryptoKey.Bytes, IV, sequenceSizeInBytes);
 
         return stream.ToArray();
     }
 
-    private void WriteNewBinaryStream(MemoryStream stream, byte[] initialSeed, byte[] cryptoKey, byte[] IV, int sequenceSizeInBits)
+    private void WriteNewBinaryStream(MemoryStream stream, byte[] initialSeed, Span<byte> cryptoKey, byte[] IV, int sequenceSizeInBits)
     {
         var bw = new BinaryWriter(stream);
         var defaultBlockSizeInBits = GetDefaultBlockSizeInBits();
@@ -53,7 +55,7 @@ public class AESProvider : CryptoProviderBase
         aesAlg.BlockSize = defaultBlockSizeInBits;
         aesAlg.FeedbackSize = defaultBlockSizeInBits;
         aesAlg.Padding = PaddingMode.Zeros;
-        aesAlg.Key = cryptoKey;
+        aesAlg.Key = cryptoKey.ToArray();
         aesAlg.IV = IV;
 
         // Create an encryptor to perform the stream transform.
@@ -85,7 +87,8 @@ public class AESProvider : CryptoProviderBase
 
     public override CryptoKey GenerateRandomKey()
     {
-        var bytes = Util.GetSecureRandomByteArray(_BlockSizeInBytes);
+        var bytes = new byte[_BlockSizeInBytes];
+        Util.FillArrayWithRandomData(bytes);
         return new CryptoKey(bytes);
     }
 
@@ -94,7 +97,7 @@ public class AESProvider : CryptoProviderBase
         return _BlockSizeInBytes;
     }
 
-    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key, int[]? bufferArray = null)
+    public override byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key)
     {
         var defaultBlockSizeInBits = GetDefaultBlockSizeInBits();
         var defaultBlockSizeInBytes = GetDefaultBlockSizeInBytes();
@@ -110,7 +113,7 @@ public class AESProvider : CryptoProviderBase
         aesAlg.BlockSize = defaultBlockSizeInBits;
         aesAlg.FeedbackSize = defaultBlockSizeInBits;
         aesAlg.Padding = PaddingMode.Zeros;
-        aesAlg.Key = key.Bytes;
+        aesAlg.Key = key.Bytes.ToArray();
         aesAlg.IV = new byte[defaultBlockSizeInBytes];
 
         // Create an encryptor to perform the stream transform.

@@ -18,7 +18,8 @@ class Program
 
         var cryptoKey = cryptoMethod.GenerateRandomKey();
 
-        var initializationVector = Util.GetSecureRandomByteArray(cryptoMethod.GetDefaultBlockSizeInBytes() / 2);
+        var initializationVector = new byte[cryptoMethod.GetDefaultBlockSizeInBytes() / 2];
+        Util.FillArrayWithRandomData(initializationVector);
 
         var ciphertext = cryptoMethod.Encrypt(plaintextBytes, cryptoKey, initializationVector);
         Console.WriteLine($"- Ciphertext Bytes: {BitConverter.ToString(ciphertext)}");

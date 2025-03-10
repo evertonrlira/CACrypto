@@ -13,9 +13,9 @@ public class VHCAProvider : PermutiveCACryptoProviderBase
         return VHCAKey.GenerateRandomKey(blockSizeInBytes, toggleDirection);
     }
 
-    public override byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, int[]? bufferArray = null)
+    public override byte[] EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
     {
-        return VHCACrypto.BlockEncrypt(initialLattice, mainRules, borderRules, bufferArray);
+        return VHCACrypto.BlockEncrypt(initialLattice, mainRules, borderRules);
     }
 
     public override byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules)

@@ -84,7 +84,7 @@ public class Rule
             return new Rule[] { };
     }
 
-    public static Rule GenerateLeftSensibleRule(int[] nuclei)
+    public static Rule GenerateLeftSensibleRule(Span<int> nuclei)
     {
         int[] ruleBits = new int[2 * nuclei.Length];
         for (int idx = 0; idx < nuclei.Length; ++idx)
@@ -95,7 +95,7 @@ public class Rule
         return new Rule(ruleBits);
     }
 
-    public static Rule GenerateRightSensibleRule(int[] nuclei)
+    public static Rule GenerateRightSensibleRule(Span<int> nuclei)
     {
         int[] ruleBits = new int[2 * nuclei.Length];
         for (int idx = 0; idx < nuclei.Length; ++idx)
@@ -137,7 +137,7 @@ public class Rule
         return rules;
     }
 
-    public static Rule[] GetAllLeftSensibleRulesByShiftingNuclei(int[] nuclei)
+    public static Rule[] GetAllLeftSensibleRulesByShiftingNuclei(Span<int> nuclei)
     {
         #region Pré-Condições
         double nucleiLengthLogDec = (Math.Log(nuclei.Length) / Math.Log(2));
@@ -151,7 +151,7 @@ public class Rule
         #endregion /* Pré-Condições */
 
         Rule[] mainRules = new Rule[nuclei.Length];
-        int[] temp = nuclei;
+        Span<int> temp = nuclei;
         for (int shiftIdx = 0; shiftIdx < nuclei.Length; ++shiftIdx)
         {
             mainRules[shiftIdx] = Rule.GenerateLeftSensibleRule(temp);
@@ -160,7 +160,7 @@ public class Rule
         return mainRules;
     }
 
-    public static Rule[] GetAllRightSensibleRulesByShiftingNuclei(int[] nuclei)
+    public static Rule[] GetAllRightSensibleRulesByShiftingNuclei(Span<int> nuclei)
     {
         #region Pré-Condições
         double nucleiLengthLogDec = (Math.Log(nuclei.Length) / Math.Log(2));
@@ -174,7 +174,7 @@ public class Rule
         #endregion /* Pré-Condições */
 
         Rule[] mainRules = new Rule[nuclei.Length];
-        int[] temp = nuclei;
+        Span<int> temp = nuclei;
         for (int shiftIdx = 0; shiftIdx < nuclei.Length; ++shiftIdx)
         {
             mainRules[shiftIdx] = Rule.GenerateRightSensibleRule(temp);

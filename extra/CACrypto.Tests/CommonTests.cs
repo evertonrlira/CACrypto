@@ -1,5 +1,6 @@
 ﻿using CACrypto.Commons;
 using FluentAssertions;
+using System.Buffers;
 
 namespace CACrypto.Tests;
 
@@ -11,7 +12,8 @@ internal static class CommonTests
         ToggleDirection direction)
     {
         // Arrange
-        var originalText = Util.GetSecureRandomByteArray(textSizeInBytes);
+        var originalText = new byte[textSizeInBytes];
+        Util.FillArrayWithRandomData(originalText);
         var cryptoKey = cryptoMethod.GenerateRandomKey(textSizeInBytes, direction);
         // Act
         var cipherText = cryptoMethod.EncryptAsSingleBlock(originalText, cryptoKey);
@@ -27,9 +29,11 @@ internal static class CommonTests
         OperationMode operationMode)
     {
         // Arrange
-        var originalText = Util.GetSecureRandomByteArray(textSizeInBytes);
+        var originalText = new byte[textSizeInBytes];
+        Util.FillArrayWithRandomData(originalText);
         var cryptoKey = cryptoMethod.GenerateRandomKey(textSizeInBytes);
-        var initializationVector = Util.GetSecureRandomByteArray(textSizeInBytes);
+        var initializationVector = new byte[textSizeInBytes];
+        Util.FillArrayWithRandomData(initializationVector);
         // Act
         var cipherText = cryptoMethod.Encrypt(originalText, cryptoKey, initializationVector, operationMode);
         cipherText.Should().NotEqual(originalText);

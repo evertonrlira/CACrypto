@@ -1,5 +1,6 @@
 ﻿using CACrypto.Commons;
 using CACrypto.RNGValidators.Commons;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Text;
 
@@ -49,16 +50,24 @@ internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> c
         var avgBitsStdDev = Util.PopulationStandardDeviation(distribution); avgBitsStdDevSum += avgBitsStdDev;
         reportCompiler.AppendLine($"DISTURBED BITS PCT (STD DEV): {avgBitsStdDev.ToString("N3", culture.NumberFormat)}");
 
-        var entrophySet = disturbanceResults.Select(Z => Util.SpatialEntropyCalculusForBinary(Util.ByteArrayToBinaryArray(Z)));
+        var entropySet = new List<float>();
+        foreach (var disturbanceArrayBytes in disturbanceResults)
+        {
+            var disturbanceArrayBits = ArrayPool<int>.Shared.Rent(sequenceLengthInBits);
+            Util.ByteArrayToBinaryArray(disturbanceArrayBytes, disturbanceArrayBits);
+            var entropy = Util.SpatialEntropyCalculusForBinary(disturbanceArrayBits.AsSpan(0, sequenceLengthInBits));
+            entropySet.Add(entropy);
+            ArrayPool<int>.Shared.Return(disturbanceArrayBits, true);
+        }
 
-        var entrophyMin = entrophySet.Min(); entrophyMinSum += entrophyMin;
-        reportCompiler.AppendLine($"ENTROPY MIN: {entrophyMin.ToString("N3", culture.NumberFormat)}");
-        var entrophyMax = entrophySet.Max(); entrophyMaxSum += entrophyMax;
-        reportCompiler.AppendLine($"ENTROPY MAX: {entrophyMax.ToString("N3", culture.NumberFormat)}");
-        var entrophyAvg = entrophySet.Average(); entrophyAvgSum += entrophyAvg;
-        reportCompiler.AppendLine($"ENTROPY AVG: {entrophyAvg.ToString("N3", culture.NumberFormat)}");
-        var entrophyStdDev = Util.PopulationStandardDeviation(entrophySet); entrophyStdDevSum += entrophyStdDev;
-        reportCompiler.AppendLine($"ENTROPY STD DEV: {entrophyStdDev.ToString("N3", culture.NumberFormat)}");
+        var entropyMin = entropySet.Min(); entrophyMinSum += entropyMin;
+        reportCompiler.AppendLine($"ENTROPY MIN: {entropyMin.ToString("N3", culture.NumberFormat)}");
+        var entropyMax = entropySet.Max(); entrophyMaxSum += entropyMax;
+        reportCompiler.AppendLine($"ENTROPY MAX: {entropyMax.ToString("N3", culture.NumberFormat)}");
+        var entropyAvg = entropySet.Average(); entrophyAvgSum += entropyAvg;
+        reportCompiler.AppendLine($"ENTROPY AVG: {entropyAvg.ToString("N3", culture.NumberFormat)}");
+        var entropyStdDev = Util.PopulationStandardDeviation(entropySet); entrophyStdDevSum += entropyStdDev;
+        reportCompiler.AppendLine($"ENTROPY STD DEV: {entropyStdDev.ToString("N3", culture.NumberFormat)}");
 
         return reportCompiler.ToString();
     }

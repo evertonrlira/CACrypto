@@ -1,4 +1,5 @@
 ﻿using CACrypto.Commons;
+using System.Buffers;
 
 namespace CACrypto.HCA;
 
@@ -12,7 +13,7 @@ public class HCACrypto
     private static readonly int Radius = 4;
     private static readonly int DoubleRadius = 8;
 
-    public byte[] BlockEncrypt(byte[] plainText, PermutiveCACryptoKey cryptoKey, int[]? bufferArray = null)
+    public static byte[] BlockEncrypt(byte[] plainText, PermutiveCACryptoKey cryptoKey)
     {
         Rule[] mainRules;
         Rule[] borderRules;
@@ -27,32 +28,34 @@ public class HCACrypto
             borderRules = Rule.GenerateRightSensibleMarginRules(RuleLength);
         }
 
-        return BlockEncrypt(plainText, mainRules, borderRules, bufferArray);
+        return BlockEncrypt(plainText, mainRules, borderRules);
     }
 
-    public static byte[] BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, int[]? bufferArray = null)
+    public static byte[] BlockEncrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
     {
-        int[] image = Util.ByteArrayToBinaryArray(initialLattice);
-        int iterations = image.Length;
-        int[] preImage = bufferArray ?? new int[image.Length];
-        int[] finalLattice;
+        int latticeLengthInBits = 8 * initialLattice.Length;
+        var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
+        var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
+        Util.ByteArrayToBinaryArray(initialLattice, image);
 
-        for (int iterationIdx = 0; iterationIdx < iterations; ++iterationIdx)
+        for (int iterationIdx = 0; iterationIdx < latticeLengthInBits; ++iterationIdx)
         {
             var mainRule = mainRules[iterationIdx % mainRules.Length];
             var borderRule = borderRules[Util.OppositeBit(mainRule.ResultBitForNeighSum[0])];
-            PreImageCalculusBits(image, mainRule, borderRule, iterationIdx, preImage);
+            PreImageCalculusBits(image, mainRule, borderRule, iterationIdx, preImage, latticeLengthInBits);
 
             // Prepare for Next Iteration
             Util.Swap(ref image, ref preImage);
         }
-        finalLattice = image;
-        return Util.BinaryArrayToByteArray(finalLattice);
+
+        var result = Util.BinaryArrayToByteArray(image);
+        ArrayPool<int>.Shared.Return(image, true);
+        ArrayPool<int>.Shared.Return(preImage, true);
+        return result;
     }
 
-    private static void PreImageCalculusBits(int[] image, Rule mainRule, Rule borderRule, int execIdx, int[] preImage)
+    private static void PreImageCalculusBits(int[] image, Rule mainRule, Rule borderRule, int execIdx, int[] preImage, int latticeSize)
     {
-        var stateLength = image.Length;
         var borderLength = DoubleRadius;
         var borderShift = DoubleRadius;
 
@@ -60,13 +63,13 @@ public class HCACrypto
         {
             int neighSum = 0;
             // Região de Borda (Contorno = 2*Raio)
-            int borderStartIdx = Util.CircularIdx(-1 * (borderShift * execIdx), stateLength);
+            int borderStartIdx = Util.CircularIdx(-1 * (borderShift * execIdx), latticeSize);
             int equivalentSensibleBitInPreImageIdx;
             int borderResultingBitInImageIdx;
             for (int borderStepIdx = 0; borderStepIdx < borderLength; ++borderStepIdx)
             {
-                borderResultingBitInImageIdx = Util.CircularIdx(borderStartIdx + borderStepIdx, stateLength);
-                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx - Radius, stateLength);
+                borderResultingBitInImageIdx = Util.CircularIdx(borderStartIdx + borderStepIdx, latticeSize);
+                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx - Radius, latticeSize);
                 if (borderRule.ResultBitForNeighSum[0] == 0)
                 {
                     preImage[equivalentSensibleBitInPreImageIdx] = image[borderResultingBitInImageIdx];
@@ -81,10 +84,10 @@ public class HCACrypto
 
             borderResultingBitInImageIdx = borderStartIdx;
             // Região Principal
-            for (int mainStepIdx = stateLength - borderLength - 1; mainStepIdx >= 0; mainStepIdx--)
+            for (int mainStepIdx = latticeSize - borderLength - 1; mainStepIdx >= 0; mainStepIdx--)
             {
-                borderResultingBitInImageIdx = Util.CircularIdx(borderResultingBitInImageIdx - 1, stateLength);
-                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx - Radius, stateLength);
+                borderResultingBitInImageIdx = Util.CircularIdx(borderResultingBitInImageIdx - 1, latticeSize);
+                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx - Radius, latticeSize);
 
                 // Apaga o Antigo LSB
                 neighSum >>= 1;
@@ -106,12 +109,12 @@ public class HCACrypto
             int neighSum = 0;
             int borderResultingBitInImageIdx = 0;
             // Região de Borda (Contorno = 2*Raio)
-            int borderStartIdx = Util.CircularIdx((borderShift * execIdx), stateLength);
+            int borderStartIdx = Util.CircularIdx((borderShift * execIdx), latticeSize);
             int equivalentSensibleBitInPreImageIdx;
             for (int borderStepIdx = 0; borderStepIdx < borderLength; ++borderStepIdx)
             {
-                borderResultingBitInImageIdx = Util.CircularIdx(borderStartIdx + borderStepIdx, stateLength);
-                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx + Radius, stateLength);
+                borderResultingBitInImageIdx = Util.CircularIdx(borderStartIdx + borderStepIdx, latticeSize);
+                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx + Radius, latticeSize);
                 if (borderRule.ResultBitForNeighSum[0] == 0)
                 {
                     preImage[equivalentSensibleBitInPreImageIdx] = image[borderResultingBitInImageIdx];
@@ -125,10 +128,10 @@ public class HCACrypto
             }
 
             // Região Principal
-            for (int mainStepIdx = stateLength - borderLength - 1; mainStepIdx >= 0; mainStepIdx--)
+            for (int mainStepIdx = latticeSize - borderLength - 1; mainStepIdx >= 0; mainStepIdx--)
             {
-                borderResultingBitInImageIdx = Util.CircularIdx(borderResultingBitInImageIdx + 1, stateLength);
-                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx + Radius, stateLength);
+                borderResultingBitInImageIdx = Util.CircularIdx(borderResultingBitInImageIdx + 1, latticeSize);
+                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx + Radius, latticeSize);
 
                 // Apaga o Antigo LSB
 
@@ -150,40 +153,40 @@ public class HCACrypto
 
     public static byte[] BlockDecrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules)
     {
-        int[] preImage = Util.ByteArrayToBinaryArray(initialLattice);
-        int iterations = preImage.Length;
-        int latticeLength = preImage.Length;
-        int[] image = new int[latticeLength];
-        int[] finalLattice;
+        int latticeLengthInBits = 8 * initialLattice.Length;
+        var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
+        var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
+        Util.ByteArrayToBinaryArray(initialLattice, preImage);
 
         var toggleDirection = mainRules[0].IsLeftSensible ? ToggleDirection.Left : ToggleDirection.Right;
         int borderShift = toggleDirection == ToggleDirection.Left ? DoubleRadius : -DoubleRadius;
-        int borderLeftmostCellIdx = Util.CircularIdx(borderShift, latticeLength);
-        for (int iterationIdx = 0; iterationIdx < iterations; ++iterationIdx)
+        int borderLeftmostCellIdx = Util.CircularIdx(borderShift, latticeLengthInBits);
+        for (int iterationIdx = 0; iterationIdx < latticeLengthInBits; ++iterationIdx)
         {
-            var mainRule = mainRules[(iterations - iterationIdx - 1) % mainRules.Length];
+            var mainRule = mainRules[(latticeLengthInBits - iterationIdx - 1) % mainRules.Length];
             var borderRule = borderRules[Util.OppositeBit(mainRule.ResultBitForNeighSum[0])];
-            SequentialEvolveLattice(preImage, mainRule, borderRule, borderLeftmostCellIdx, image);
+            SequentialEvolveLattice(preImage, mainRule, borderRule, borderLeftmostCellIdx, image, latticeLengthInBits);
 
             // Prepare for Next Iteration
             Util.Swap(ref image, ref preImage);
 
-            borderLeftmostCellIdx = Util.CircularIdx(borderLeftmostCellIdx + borderShift, latticeLength);
+            borderLeftmostCellIdx = Util.CircularIdx(borderLeftmostCellIdx + borderShift, latticeLengthInBits);
         }
-        finalLattice = preImage;
-        return Util.BinaryArrayToByteArray(finalLattice);
+        var result = Util.BinaryArrayToByteArray(preImage);
+        ArrayPool<int>.Shared.Return(image, true);
+        ArrayPool<int>.Shared.Return(preImage, true);
+        return result;
     }
 
-    private static int[] SequentialEvolveLattice(int[] preImage, Rule mainRule, Rule borderRule, int imageBorderLeftCellIdx, int[] image)
+    private static int[] SequentialEvolveLattice(int[] preImage, Rule mainRule, Rule borderRule, int imageBorderLeftCellIdx, int[] image, int latticeSize)
     {
-        EvolveLatticeSlice(preImage, mainRule, borderRule, imageBorderLeftCellIdx, image, 0, preImage.Length);
+        EvolveLatticeSlice(preImage, mainRule, borderRule, imageBorderLeftCellIdx, image, 0, latticeSize, latticeSize);
         return image;
     }
 
-    private static void EvolveLatticeSlice(int[] preImage, Rule mainRule, Rule borderRule, int imageBorderLeftCellIdx, int[] image, int sliceStartInclusiveIdx, int sliceEndExclusiveIdx)
+    private static void EvolveLatticeSlice(int[] preImage, Rule mainRule, Rule borderRule, int imageBorderLeftCellIdx, int[] image, int sliceStartInclusiveIdx, int sliceEndExclusiveIdx, int latticeSize)
     {
         bool isBorderCell;
-        int blockSize = preImage.Length;
         int startingBinaryFactor = 1 << DoubleRadius;
         int binaryFactor;
         for (int centralCellIdx = sliceStartInclusiveIdx; centralCellIdx < sliceEndExclusiveIdx; centralCellIdx++)
@@ -192,7 +195,7 @@ public class HCACrypto
             int neighSum = 0;
             for (int neighCellShiftIdx = -Radius; neighCellShiftIdx <= Radius; neighCellShiftIdx++)
             {
-                neighSum += binaryFactor * preImage[Util.CircularIdx(centralCellIdx + neighCellShiftIdx, blockSize)];
+                neighSum += binaryFactor * preImage[Util.CircularIdx(centralCellIdx + neighCellShiftIdx, latticeSize)];
                 binaryFactor >>= 1;
             }
 

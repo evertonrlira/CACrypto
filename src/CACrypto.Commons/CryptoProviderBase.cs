@@ -63,5 +63,5 @@ public abstract class CryptoProviderBase(string methodName)
         return dirCombined;
     }
 
-    public abstract byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key, int[]? bufferArray = null);
+    public abstract byte[] EncryptAsSingleBlock(byte[] plaintext, CryptoKey key);
 }

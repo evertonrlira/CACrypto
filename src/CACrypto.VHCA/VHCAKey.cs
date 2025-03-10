@@ -1,4 +1,6 @@
 ﻿using CACrypto.Commons;
+using System;
+using System.Buffers;
 
 namespace CACrypto.VHCA;
 
@@ -11,19 +13,23 @@ public class VHCAKey : PermutiveCACryptoKey
         blockSize ??= VHCACrypto.DefaultBlockSizeInBytes;
         toggleDirection ??= Util.GetRandomToggleDirection();
 
-        var keyBytes = Util.GetSecureRandomByteArray(VHCACrypto.KeyBitsToRuleFactor * blockSize.Value);
+        var keyBytesLength = VHCACrypto.KeyBitsToRuleFactor * blockSize.Value;
+        var keyBytes = new byte[keyBytesLength];
+        Util.FillArrayWithRandomData(keyBytes);
         return new VHCAKey(keyBytes, toggleDirection.Value);
     }
 
     public override bool IsValid()
     {
-        var blockSizeInBytes = VHCACrypto.DefaultBlockSizeInBytes;
-        var keyPart01 = Util.ByteArrayToBinaryArray(Bytes[0..(2*blockSizeInBytes)]);
-        var keyPart02 = Util.ByteArrayToBinaryArray(Bytes[blockSizeInBytes..]);
-        var keyPart03 = Util.ByteArrayToBinaryArray([..Bytes[(2*blockSizeInBytes)..], ..Bytes[..blockSizeInBytes]]);
-        return Util.SpatialEntropyCalculusForBinary(keyPart01) > 0.75 &&
-               Util.SpatialEntropyCalculusForBinary(keyPart02) > 0.75 &&
-               Util.SpatialEntropyCalculusForBinary(keyPart03) > 0.75;
+        var thirdPartitionLength = Bytes.Length / 3;
+
+        Span<byte> keyPart01 = Bytes[0..(2 * thirdPartitionLength)];
+        Span<byte> keyPart02 = Bytes[thirdPartitionLength..];
+        Span<byte> keyPart03 = [.. Bytes[(2 * thirdPartitionLength)..], .. Bytes[..thirdPartitionLength]];
+
+        return IsValid(keyPart01)
+            && IsValid(keyPart02)
+            && IsValid(keyPart03);
     }
 
     public override CryptoKey ChangeRandomBit()

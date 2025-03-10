@@ -3,11 +3,14 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using static System.Net.Mime.MediaTypeNames;
 using System.Runtime.Intrinsics.X86;
+using System.Buffers;
 
 namespace CACrypto.Commons
 {
     public class Util
     {
+        public static readonly Byte[] BytePosValues = [0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01];
+
         public static int CalculateBlockCount(int plainTextLengthInBytes, int blockSizeInBytes)
         {
             var blockCount = (plainTextLengthInBytes / blockSizeInBytes);
@@ -50,11 +53,11 @@ namespace CACrypto.Commons
             return octalArray.Select(octal => directedRules[octal]).ToArray();
         }
 
-        public static byte[] CloneByteArray(byte[] oldArray)
+        public static byte[] CloneByteArray(Span<byte> oldArray)
         {
-            var newArray = new byte[oldArray.Length];
-            Buffer.BlockCopy(oldArray, 0, newArray, 0, oldArray.Length);
-            return newArray;
+            //var newArray = new byte[oldArray.Length];
+            //Buffer.BlockCopy(oldArray, 0, newArray, 0, oldArray.Length);
+            return oldArray.ToArray();
         }
 
         public static string CreateUniqueTempDirectory()
@@ -168,9 +171,9 @@ namespace CACrypto.Commons
             }
         }
 
-        public static byte[] ChangeRandomBit(byte[] originalArray, bool changeOriginal = false)
+        public static byte[] ChangeRandomBit(Span<byte> originalArray)
         {
-            var newArray = changeOriginal ? originalArray : Util.CloneByteArray(originalArray);
+            var newArray = Util.CloneByteArray(originalArray);
 
             var randomBitIdx = Util.GetRandomNumber(0, 8 * (originalArray.Length));
             ToggleBit(newArray, randomBitIdx);
@@ -180,9 +183,14 @@ namespace CACrypto.Commons
 
         public static IEnumerable<byte[]> GetSecureRandomByteArrays(int sequenceSize, int sequenceCount)
         {
-            return Enumerable
-                .Repeat(0, sequenceCount)
-                .Select(n => Util.GetSecureRandomByteArray(sequenceSize));
+            var result = new List<byte[]>(sequenceCount);
+            for (int i = 0; i < sequenceCount; i++)
+            {
+                var array = new byte[sequenceSize];
+                FillArrayWithRandomData(array);
+                result.Add(array);
+            }
+            return result;
         }
 
         public static int CountBits(byte[] sequence)
@@ -198,7 +206,7 @@ namespace CACrypto.Commons
             return sum;
         }
 
-        public static float SpatialEntropyCalculusForBinary(int[] word)
+        public static float SpatialEntropyCalculusForBinary(Span<int> word)
         {
             int windowSize = 8;
 
@@ -236,61 +244,7 @@ namespace CACrypto.Commons
             return (-1 * (float)entropySum) / windowSize;
         }
 
-        public static int[] XOR(int[] w1, int[] w2)
-        {
-            if (w1.Length != w2.Length)
-            {
-                throw new Exception("Words to be XORed had different size");
-            }
 
-            int[] xorArray = new int[w1.Length];
-            for (int idx = 0; idx < xorArray.Length; ++idx)
-            {
-                xorArray[idx] = w1[idx] ^ w2[idx];
-            }
-            return xorArray;
-        }
-
-        public static char[] XOR_str(int[] w1, int[] w2, int cap)
-        {
-            if (w1.Length != w2.Length)
-            {
-                throw new Exception("Words to be XORed had different size");
-            }
-
-            var xorArray = new char[cap];
-            for (int idx = 0; idx < cap; ++idx)
-            {
-                xorArray[idx] = (((w1[idx] ^ w2[idx]) == 1) ? '1' : '0');
-            }
-            return xorArray;
-        }
-
-        public static object ByteArrayToBinaryString(byte[] plainText)
-        {
-            return BinaryArrayToString(ByteArrayToBinaryArray(plainText));
-        }
-
-        public static double SampleStandardDeviation(IEnumerable<int> values)
-        {
-            double ret = 0;
-            if (values.Count() > 1)
-            {
-                //Compute the Average      
-                double avg = values.Average();
-                //Perform the Sum of (value-avg)_2_2      
-                double sum = values.Sum(d => Math.Pow(d - avg, 2));
-                //Put it all together      
-                ret = Math.Sqrt((sum) / (values.Count() - 1));
-            }
-            return ret;
-        }
-
-        public static double PopulationStandardDeviation(IEnumerable<int> values)
-        {
-            double avg = values.Average();
-            return Math.Sqrt(values.Average(v => Math.Pow(v - avg, 2)));
-        }
         public static double PopulationStandardDeviation(IEnumerable<float> values)
         {
             double avg = values.Average();
@@ -307,138 +261,39 @@ namespace CACrypto.Commons
             return String.Join("", bitArray.Select(a => (a == 0 ? falseChar : trueChar)).ToArray());
         }
 
-        public static double PopulationStandardDeviation(IEnumerable<double> values)
+        public static void FillArrayWithRandomData(byte[] array)
         {
-            double avg = values.Average();
-            return Math.Sqrt(values.Average(v => Math.Pow(v - avg, 2)));
+            Randoms.FastestInt32.NextBytes(array);
         }
 
-        public static IEnumerable<int[]> GenerateAllBinarySequences(int length)
-        {
-            return
-                Enumerable.Range(0, (int)Math.Pow(2, length))
-                .Select(n => Convert.ToString(n, 2).PadLeft(length, '0'))
-                .Select(nb => nb.ToCharArray().Select(c => c - (int)'0').ToArray());
-        }
-
-        public static T GetRandomElement<T>(IList<T> list)
-        {
-            return list[Randoms.Next(0, list.Count)];
-        }
-
-        public static byte[] GetSecureRandomByteArray(int length)
-        {
-            var byteArray = new byte[length];
-            Randoms.FastestInt32.NextBytes(byteArray);
-            return byteArray;
-        }
-
-        public static int[] GetSecureRandomBinaryArray(int length)
-        {
-            var binaryArray = new int[(length / 8) * 8];
-            var bytes = length / 8;
-            var byteArray = new byte[bytes];
-            Randoms.FastestInt32.NextBytes(byteArray);
-            for (int i = 0; i < bytes; i++)
-            {
-                var Byte = Convert.ToInt32(byteArray[i]);
-                var basePos = i * 8;
-                if (Byte >= 128) { binaryArray[basePos] = 1; Byte -= 128; }
-                if (Byte >= 64) { binaryArray[basePos + 1] = 1; Byte -= 64; }
-                if (Byte >= 32) { binaryArray[basePos + 2] = 1; Byte -= 32; }
-                if (Byte >= 16) { binaryArray[basePos + 3] = 1; Byte -= 16; }
-                if (Byte >= 8) { binaryArray[basePos + 4] = 1; Byte -= 8; }
-                if (Byte >= 4) { binaryArray[basePos + 5] = 1; Byte -= 4; }
-                if (Byte >= 2) { binaryArray[basePos + 6] = 1; Byte -= 2; }
-                if (Byte >= 1) { binaryArray[basePos + 7] = 1; }
-            }
-            return binaryArray.Take(length).ToArray();
-        }
-
-        public static int[] ByteArrayToBinaryArray(byte[] byteArray)
+        public static void ByteArrayToBinaryArray(Span<byte> byteArray, int[] outputBinaryArray)
         {
             int length = byteArray.Length;
-            var binaryArray = new int[8 * length];
-            for (int i = 0; i < length; i++)
+
+            for (int byteIdx = 0; byteIdx < length; byteIdx++)
             {
-                var Byte = Convert.ToInt32(byteArray[i]);
-                var basePos = i * 8;
-                if (Byte >= 128) { binaryArray[basePos] = 1; Byte -= 128; }
-                if (Byte >= 64) { binaryArray[basePos + 1] = 1; Byte -= 64; }
-                if (Byte >= 32) { binaryArray[basePos + 2] = 1; Byte -= 32; }
-                if (Byte >= 16) { binaryArray[basePos + 3] = 1; Byte -= 16; }
-                if (Byte >= 8) { binaryArray[basePos + 4] = 1; Byte -= 8; }
-                if (Byte >= 4) { binaryArray[basePos + 5] = 1; Byte -= 4; }
-                if (Byte >= 2) { binaryArray[basePos + 6] = 1; Byte -= 2; }
-                if (Byte >= 1) { binaryArray[basePos + 7] = 1; }
-            }
-            return binaryArray;
-        }
-
-        public static byte[] ByteArrayToBinaryByteArray(byte[] byteArray)
-        {
-            int length = byteArray.Length;
-            var binaryArray = new byte[8 * length];
-            for (int i = 0; i < length; i++)
-            {
-                var Byte = Convert.ToInt32(byteArray[i]);
-                var basePos = i * 8;
-                if (Byte >= 128) { binaryArray[basePos] = 1; Byte -= 128; }
-                if (Byte >= 64) { binaryArray[basePos + 1] = 1; Byte -= 64; }
-                if (Byte >= 32) { binaryArray[basePos + 2] = 1; Byte -= 32; }
-                if (Byte >= 16) { binaryArray[basePos + 3] = 1; Byte -= 16; }
-                if (Byte >= 8) { binaryArray[basePos + 4] = 1; Byte -= 8; }
-                if (Byte >= 4) { binaryArray[basePos + 5] = 1; Byte -= 4; }
-                if (Byte >= 2) { binaryArray[basePos + 6] = 1; Byte -= 2; }
-                if (Byte >= 1) { binaryArray[basePos + 7] = 1; }
-            }
-            return binaryArray;
-        }
-
-        public static int[] ByteArrayToBinaryArray(byte[] byteArray, int blockStartIdx, int blockSizeInBytes)
-        {
-            var binaryArray = new int[8 * blockSizeInBytes];
-            for (int i = 0; i < blockSizeInBytes; i++)
-            {
-                var Byte = Convert.ToInt32(byteArray[blockStartIdx + i]);
-                var basePos = i * 8;
-                if (Byte >= 128) { binaryArray[basePos] = 1; Byte -= 128; }
-                if (Byte >= 64) { binaryArray[basePos + 1] = 1; Byte -= 64; }
-                if (Byte >= 32) { binaryArray[basePos + 2] = 1; Byte -= 32; }
-                if (Byte >= 16) { binaryArray[basePos + 3] = 1; Byte -= 16; }
-                if (Byte >= 8) { binaryArray[basePos + 4] = 1; Byte -= 8; }
-                if (Byte >= 4) { binaryArray[basePos + 5] = 1; Byte -= 4; }
-                if (Byte >= 2) { binaryArray[basePos + 6] = 1; Byte -= 2; }
-                if (Byte >= 1) { binaryArray[basePos + 7] = 1; }
-            }
-            return binaryArray;
-        }
-
-        public static List<int> ByteArrayToBinaryList(byte[] byteArray)
-        {
-            var byteArrayLength = byteArray.Length;
-            var result = new List<int>(8 * byteArray.Length);
-
-            for (int byteIdx = 0; byteIdx < byteArrayLength; ++byteIdx)
-            {
-                var currentByte = byteArray[byteIdx];
-
-                for (int bitIdx = 7; bitIdx >= 0; --bitIdx)
+                for (int bitIdx = 0; bitIdx < 8; bitIdx++)
                 {
-                    result.Add(((currentByte & (1 << bitIdx)) != 0) ? 1 : 0);
+                    outputBinaryArray[8 * byteIdx + bitIdx] = (byteArray[byteIdx] & BytePosValues[bitIdx]) > 0 ? 1 : 0;
                 }
             }
-            return result;
+        }
+
+        public static int[] ByteSpanToBinaryArray(Span<byte> bytes)
+        {
+            var binaryArray = new int[8 * bytes.Length];
+            ByteArrayToBinaryArray(bytes, binaryArray);
+            return binaryArray;
         }
 
         public static byte[] BinaryArrayToByteArray(ReadOnlySpan<int> binaryArray)
         {
             int length = binaryArray.Length;
             if (length % 8 != 0)
-                throw new ArgumentException("O Array Binario nao tem comprimento multiplo de 8 pra conversao em Byte");
+                throw new ArgumentException("The binary array does not have a Length that can allows conversion to byte array");
 
             var byteLength = length / 8;
-            var byteArray = new byte[byteLength];
+            var byteArray = new byte[byteLength]; // TODO: Optimize
             for (int i = 0; i < byteLength; i++)
             {
                 var byteValue = 0;
@@ -454,200 +309,6 @@ namespace CACrypto.Commons
                 byteArray[i] = (byte)byteValue;
             }
             return byteArray;
-        }
-
-        public static byte[] BinaryByteArrayToByteArray(byte[] binaryArray)
-        {
-            int length = binaryArray.Length;
-            if (length % 8 != 0)
-                throw new ArgumentException("O Array Binario nao tem comprimento multiplo de 8 pra conversao em Byte");
-
-            var byteLength = length / 8;
-            var byteArray = new byte[byteLength];
-            for (int i = 0; i < byteLength; i++)
-            {
-                var byteValue = 0;
-                var basePos = i * 8;
-                if (binaryArray[basePos] == 1) { byteValue += 128; }
-                if (binaryArray[basePos + 1] == 1) { byteValue += 64; }
-                if (binaryArray[basePos + 2] == 1) { byteValue += 32; }
-                if (binaryArray[basePos + 3] == 1) { byteValue += 16; }
-                if (binaryArray[basePos + 4] == 1) { byteValue += 8; }
-                if (binaryArray[basePos + 5] == 1) { byteValue += 4; }
-                if (binaryArray[basePos + 6] == 1) { byteValue += 2; }
-                if (binaryArray[basePos + 7] == 1) { byteValue += 1; }
-                byteArray[i] = (byte)byteValue;
-            }
-            return byteArray;
-        }
-
-        public static void WriteBinaryArrayToByteArray(int[] binaryArray, byte[] byteArray, int blockStartIdx)
-        {
-            int length = binaryArray.Length;
-            if (length % 8 != 0)
-                throw new ArgumentException("O Array Binario nao tem comprimento multiplo de 8 pra conversao em Byte");
-
-            var byteLength = length / 8;
-            //var byteArray = new byte[byteLength];
-            for (int i = 0; i < byteLength; i++)
-            {
-                var byteValue = 0;
-                var basePos = i * 8;
-                if (binaryArray[basePos] == 1) { byteValue += 128; }
-                if (binaryArray[basePos + 1] == 1) { byteValue += 64; }
-                if (binaryArray[basePos + 2] == 1) { byteValue += 32; }
-                if (binaryArray[basePos + 3] == 1) { byteValue += 16; }
-                if (binaryArray[basePos + 4] == 1) { byteValue += 8; }
-                if (binaryArray[basePos + 5] == 1) { byteValue += 4; }
-                if (binaryArray[basePos + 6] == 1) { byteValue += 2; }
-                if (binaryArray[basePos + 7] == 1) { byteValue += 1; }
-                byteArray[blockStartIdx + i] = (byte)byteValue;
-            }
-            //return byteArray;
-        }
-
-        public static int[] GetSecureRandomOctalArray(int length)
-        {
-            var octalArray = new int[length];
-            int bitsForOctal = 3;
-            var bitsInByte = 8;
-
-            // Quantos Bytes Gerados Aleatoriamente será necessário pra conseguir meus Octais
-            var bytesLength = ((length * bitsForOctal) - 1) / bitsInByte + 1; // Math.Ceiling
-            var byteArray = new byte[bytesLength];
-            Randoms.FastestInt32.NextBytes(byteArray);
-
-            return ConvertByteArrayToOctalArray(byteArray);
-        }
-
-        public static int[] GetSecureRandomBitArrayWithMinEntropyCoefficient(int keyLengthInBits, double minEntropy = 0.75)
-        {
-            var randomBits = Util.GetSecureRandomBinaryArray(keyLengthInBits);
-            while (Util.SpatialEntropyCalculusForBinary(randomBits) <= 0.75)
-            {
-                randomBits = Util.GetSecureRandomBinaryArray(keyLengthInBits);
-            }
-            return randomBits;
-        }
-
-        public static int[] GetSecureRandomOctalBitArrayWithMinEntropyCoefficient(int keyLengthInBits, double minEntropy = 0.75)
-        {
-            int[] octalArray = new int[keyLengthInBits / 3];
-            int[] randomBits;
-            while (true)
-            {
-                randomBits = Util.GetSecureRandomBinaryArray(keyLengthInBits);
-                var part01 = randomBits.Take(keyLengthInBits / 3).ToArray();
-                var part02 = randomBits.Skip(keyLengthInBits / 3).Take(keyLengthInBits / 3).ToArray();
-                var part03 = randomBits.Skip(keyLengthInBits / 3).Skip(keyLengthInBits / 3).ToArray();
-                var entropy01 = Util.SpatialEntropyCalculusForBinary(part01);
-                if (entropy01 <= 0.75)
-                    continue;
-                var entropy02 = Util.SpatialEntropyCalculusForBinary(part02);
-                if (entropy02 <= 0.75)
-                    continue;
-                var entropy03 = Util.SpatialEntropyCalculusForBinary(part03);
-                if (entropy02 > 0.75)
-                    break;
-            }
-            return randomBits;
-            //while (Util.SpatialEntropyCalculusForOctal(randomBits) <= 0.75)
-            //{
-            //    randomBits = Util.GetSecureRandomBinaryArray(keyLengthInBits);
-            //}
-            /*
-            int currentOctalIdx = 0;
-            for (int idxBit=0; idxBit < keyLengthInBits; idxBit += 3)
-            {
-                int currentOctalValue = (randomBits[idxBit] << 2) + (randomBits[idxBit + 1] << 1) + randomBits[idxBit+2];
-                octalArray[currentOctalIdx] = currentOctalValue;
-                currentOctalIdx++;
-            }
-            return octalArray;
-            */
-        }
-
-        public static int[] ConvertBitArrayToOctalArray(int[] bitArray)
-        {
-            var octalArray = new int[bitArray.Length / 3];
-            int currentOctalIdx = 0;
-            for (int idxBit = 0; idxBit < bitArray.Length; idxBit += 3)
-            {
-                int currentOctalValue = (bitArray[idxBit] << 2) + (bitArray[idxBit + 1] << 1) + bitArray[idxBit + 2];
-                octalArray[currentOctalIdx] = currentOctalValue;
-                currentOctalIdx++;
-            }
-            return octalArray;
-        }
-
-        public static int[] ConvertByteArrayToOctalArray(byte[] byteArray)
-        {
-            int bitsForOctal = 3;
-            var bitsInByte = 8;
-            var octalArray = new int[(byteArray.Length * bitsInByte) / bitsForOctal];
-
-            int octalArrayIdx = 0;
-            var currentLetterHas = 0;
-            foreach (var currentByte in byteArray)
-            {
-                if (currentLetterHas == 0)
-                {
-                    octalArray[octalArrayIdx++] = currentByte >> 5;
-                    octalArray[octalArrayIdx++] = ((currentByte << 3) & 0xFF) >> 5;
-                    octalArray[octalArrayIdx] = ((currentByte << 6) & 0xFF) >> 5;
-                    currentLetterHas = 2;
-                }
-                else if (currentLetterHas == 1)
-                {
-                    octalArray[octalArrayIdx++] += currentByte >> 6;
-                    octalArray[octalArrayIdx++] = ((currentByte << 2) & 0xFF) >> 5;
-                    octalArray[octalArrayIdx++] = ((currentByte << 5) & 0xFF) >> 5;
-                    currentLetterHas = 0;
-                }
-                else if (currentLetterHas == 2)
-                {
-                    octalArray[octalArrayIdx++] += currentByte >> 7;
-                    octalArray[octalArrayIdx++] = ((currentByte << 1) & 0xFF) >> 5;
-                    octalArray[octalArrayIdx++] = ((currentByte << 4) & 0xFF) >> 5;
-                    octalArray[octalArrayIdx] = ((currentByte << 7) & 0xFF) >> 5;
-                    currentLetterHas = 1;
-                }
-            }
-            return octalArray;
-        }
-
-        [Obsolete("Use GetSecureRandomOctalArray.")]
-        public static int[] GetSecureRandomOctalArray_Old(int length)
-        {
-            var resultArray = new int[length];
-            int bitsForOctal = 3;
-            var bitsInByte = 8;
-
-            // Quantos Bytes Gerados Aleatoriamente será necessário pra conseguir meus Octais
-            var bytesLength = ((length * bitsForOctal) - 1) / bitsInByte + 1; // Math.Ceiling
-            var byteArray = new byte[bytesLength];
-            Randoms.FastestInt32.NextBytes(byteArray);
-
-            var octalIdx = 0;
-            var byteIdx = 0;
-            var posValueInByte = 128;
-            var posValueInOctal = 4;
-
-            while (octalIdx < length)
-            {
-                if (byteArray[byteIdx] >= posValueInByte)
-                {
-                    resultArray[octalIdx] += posValueInOctal;
-                    byteArray[byteIdx] -= (byte)posValueInByte;
-                }
-
-                if (posValueInOctal == 1) { posValueInOctal = 4; ++octalIdx; }
-                else { posValueInOctal /= 2; }
-
-                if (posValueInByte == 1) { posValueInByte = 128; ++byteIdx; }
-                else { posValueInByte /= 2; }
-            }
-            return resultArray;
         }
 
         public static T? GetRandomElement<T>(IEnumerable<T> list)
@@ -705,14 +366,16 @@ namespace CACrypto.Commons
             }
         }
 
-        public static int[] LeftShift(int[] array)
+        public static int[] LeftShift(Span<int> array)
         {
-            return Enumerable.Concat(array.Skip(1), array.Take(1)).ToArray();
+            Span<int> slice = [..array[1..], array[0]];
+            return slice.ToArray();
         }
 
-        public static int[] RightShift(int[] array)
+        public static int[] RightShift(Span<int> array)
         {
-            return Enumerable.Concat(array.Skip(array.Length - 1), array.Take(array.Length - 1)).ToArray();
+            Span<int> slice = [array[^1], ..array[0..^1]];
+            return slice.ToArray();
         }
 
         public static int OppositeBit(int bit)
@@ -793,7 +456,7 @@ namespace CACrypto.Commons
             self[byteIndex] = (byte)(value ? (self[byteIndex] | mask) : (self[byteIndex] & ~mask));
         }
 
-        public static void ToggleBit(byte[] self, int index)
+        public static void ToggleBit(Span<byte> self, int index)
         {
             int byteIndex = index / 8;
             int bitIndex = index % 8;

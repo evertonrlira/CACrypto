@@ -40,9 +40,9 @@ public class HCAProvider : PermutiveCACryptoProviderBase
         }
     }
 
-    public override byte[] EncryptAsSingleBlock(byte[] plainText, Rule[] mainRules, Rule[] borderRules, int[]? bufferArray = null)
+    public override byte[] EncryptAsSingleBlock(byte[] plainText, Rule[] mainRules, Rule[] borderRules)
     {
-        return HCACrypto.BlockEncrypt(plainText, mainRules, borderRules, bufferArray);
+        return HCACrypto.BlockEncrypt(plainText, mainRules, borderRules);
     }
 
     public override byte[] DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules)
