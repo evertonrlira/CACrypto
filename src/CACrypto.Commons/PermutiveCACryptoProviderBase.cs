@@ -236,14 +236,19 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
 
     public override byte[] GeneratePseudoRandomSequence(int sequenceSizeInBytes)
     {
-        using var stream = new MemoryStream();
-        var bw = new BinaryWriter(stream);
-
         var defaultBlockSizeInBytes = GetDefaultBlockSizeInBytes();
         var cryptoKey = GenerateRandomKey(defaultBlockSizeInBytes);
         var mainRules = DeriveMainRulesFromKey(cryptoKey);
         var borderRules = DeriveBorderRulesFromKey(cryptoKey);
+        return GeneratePseudoRandomSequence(sequenceSizeInBytes, mainRules, borderRules);
+    }
 
+    public byte[] GeneratePseudoRandomSequence(int sequenceSizeInBytes, Rule[] mainRules, Rule[] borderRules)
+    {
+        using var stream = new MemoryStream();
+        var bw = new BinaryWriter(stream);
+
+        var defaultBlockSizeInBytes = GetDefaultBlockSizeInBytes();
         var plaintext = ArrayPool<byte>.Shared.Rent(defaultBlockSizeInBytes);
         Util.FillArrayWithRandomData(plaintext);
         var ciphertext = ArrayPool<byte>.Shared.Rent(defaultBlockSizeInBytes);

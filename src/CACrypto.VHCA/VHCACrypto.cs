@@ -86,7 +86,6 @@ public class VHCACrypto
 
     protected static void EvolveLatticeSlice(int[] preImage, Rule[] mainRules, Rule[] borderRules, int imageBorderLeftCellIdx, int[] image, int sliceStartInclusiveIdx, int sliceEndExclusiveIdx, int latticeSize)
     {
-        bool isBorderCell;
         int startingBinaryFactor = 1 << DoubleRadius;
         int binaryFactor;
         for (int centralCellIdx = sliceStartInclusiveIdx; centralCellIdx < sliceEndExclusiveIdx; centralCellIdx++)
@@ -96,29 +95,16 @@ public class VHCACrypto
             for (int neighCellShiftIdx = -Radius; neighCellShiftIdx <= Radius; neighCellShiftIdx++)
             {
                 neighSum += binaryFactor * preImage[Util.CircularIdx(centralCellIdx + neighCellShiftIdx, latticeSize)];
-                if (neighSum < 0 || neighSum >= 8)
-                {
-                    Console.WriteLine(neighSum);
-                }
-
                 binaryFactor >>= 1;
             }
 
-            try
+            if (IsBorderCell(centralCellIdx, imageBorderLeftCellIdx, latticeSize))
             {
-                isBorderCell = (centralCellIdx >= imageBorderLeftCellIdx && centralCellIdx < imageBorderLeftCellIdx + DoubleRadius);
-                if (isBorderCell)
-                {
-                    image[centralCellIdx] = borderRules[centralCellIdx].ResultBitForNeighSum[neighSum];
-                }
-                else
-                {
-                    image[centralCellIdx] = mainRules[centralCellIdx].ResultBitForNeighSum[neighSum];
-                }
+                image[centralCellIdx] = borderRules[centralCellIdx].ResultBitForNeighSum[neighSum];
             }
-            catch (Exception e)
+            else
             {
-                Console.WriteLine(e.ToString());
+                image[centralCellIdx] = mainRules[centralCellIdx].ResultBitForNeighSum[neighSum];
             }
         }
     }
@@ -192,11 +178,11 @@ public class VHCACrypto
 
         int neighSum = 0;
         int toggleDirectionShift = toggleDirection == ToggleDirection.Left ? -1 : 1;
-        int currentBitInImageIdx = Util.CircularIdx(currentBitInPreImageIdx + (toggleDirection == ToggleDirection.Left ? 1 : -1), latticeSize);
+        int currentBitInImageIdx = Util.CircularIdx(currentBitInPreImageIdx + (toggleDirection == ToggleDirection.Left ? Radius : -Radius), latticeSize);
         int BinaryCutMask = 0x7FFFFFFF >> 30 - DoubleRadius;
         foreach (var _ in image)
         {
-            if (currentBitInImageIdx == preImageBorderLeftCellIdx || currentBitInImageIdx == preImageBorderLeftCellIdx + 1)
+            if (IsBorderCell(currentBitInImageIdx, preImageBorderLeftCellIdx, latticeSize))
             {
                 preImage[currentBitInPreImageIdx] = borderRules[currentBitInImageIdx].ResultBitForNeighSum[0] == 0
                     ? image[currentBitInImageIdx]
@@ -227,5 +213,19 @@ public class VHCACrypto
             currentBitInImageIdx = currentBitInPreImageIdx;
             currentBitInPreImageIdx = Util.CircularIdx(currentBitInPreImageIdx + toggleDirectionShift, latticeSize);
         }
+    }
+
+    private static bool IsBorderCell(int cellIdx, int borderStartIdx, int latticeSize)
+    {
+        var borderEndIdx = borderStartIdx + DoubleRadius;
+        if (borderEndIdx > latticeSize)
+        {
+            if (cellIdx >= borderStartIdx)
+            {
+                return true;
+            }
+            return cellIdx < borderEndIdx - latticeSize;
+        }
+        return (cellIdx >= borderStartIdx && cellIdx < borderEndIdx);
     }
 }

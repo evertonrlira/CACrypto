@@ -43,6 +43,7 @@ public class HCAProvider : PermutiveCACryptoProviderBase
     public override void EncryptAsSingleBlock(byte[] plainText, Rule[] mainRules, Rule[] borderRules, byte[] ciphertext, int blockSize)
     {
         HCACrypto.BlockEncrypt(plainText, mainRules, borderRules, ciphertext, blockSize);
+        // HCACrypto.BlockEncryptOriginal(plainText, mainRules, borderRules, ciphertext, blockSize);
     }
 
     public override void DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules, byte[] plaintext, int blockSize)

@@ -38,11 +38,16 @@ public class HCACrypto
         var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         Util.ByteArrayToBinaryArray(initialLattice, image);
 
+        var toggleDirection = mainRules[0].IsLeftSensible ? ToggleDirection.Left : ToggleDirection.Right;
+        int borderLeftCellIdx = 0;
+        int borderShift = toggleDirection == ToggleDirection.Left ? -DoubleRadius : DoubleRadius;
         for (int iterationIdx = 0; iterationIdx < latticeLengthInBits; ++iterationIdx)
         {
             var mainRule = mainRules[iterationIdx % mainRules.Length];
             var borderRule = borderRules[Util.OppositeBit(mainRule.ResultBitForNeighSum[0])];
-            PreImageCalculusBits(image, mainRule, borderRule, iterationIdx, preImage, latticeLengthInBits);
+            PreImageCalculusBits(image, mainRule, borderRule, borderLeftCellIdx, preImage, toggleDirection, latticeLengthInBits);
+
+            borderLeftCellIdx = Util.CircularIdx(borderLeftCellIdx + borderShift, latticeLengthInBits);
 
             // Prepare for Next Iteration
             Util.Swap(ref image, ref preImage);
@@ -54,101 +59,69 @@ public class HCACrypto
         return finalLattice;
     }
 
-    private static void PreImageCalculusBits(int[] image, Rule mainRule, Rule borderRule, int execIdx, int[] preImage, int latticeSize)
+    private static void PreImageCalculusBits(int[] image, Rule mainRule, Rule borderRule, int preImageBorderLeftCellIdx, int[] preImage, ToggleDirection toggleDirection, int latticeSize)
     {
-        var borderLength = DoubleRadius;
-        var borderShift = DoubleRadius;
-
-        if (borderRule.IsLeftSensible) // Cálculo da Direita pra Esquerda
+        int currentBitInPreImageIdx;
+        if (toggleDirection == ToggleDirection.Left)
         {
-            int neighSum = 0;
-            // Região de Borda (Contorno = 2*Raio)
-            int borderStartIdx = Util.CircularIdx(-1 * (borderShift * execIdx), latticeSize);
-            int equivalentSensibleBitInPreImageIdx;
-            int borderResultingBitInImageIdx;
-            for (int borderStepIdx = 0; borderStepIdx < borderLength; ++borderStepIdx)
-            {
-                borderResultingBitInImageIdx = Util.CircularIdx(borderStartIdx + borderStepIdx, latticeSize);
-                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx - Radius, latticeSize);
-                if (borderRule.ResultBitForNeighSum[0] == 0)
-                {
-                    preImage[equivalentSensibleBitInPreImageIdx] = image[borderResultingBitInImageIdx];
-                }
-                else
-                {
-                    preImage[equivalentSensibleBitInPreImageIdx] = Util.OppositeBit(image[borderResultingBitInImageIdx]);
-                }
-                neighSum |= preImage[equivalentSensibleBitInPreImageIdx];
-                neighSum <<= 1;
-            }
-
-            borderResultingBitInImageIdx = borderStartIdx;
-            // Região Principal
-            for (int mainStepIdx = latticeSize - borderLength - 1; mainStepIdx >= 0; mainStepIdx--)
-            {
-                borderResultingBitInImageIdx = Util.CircularIdx(borderResultingBitInImageIdx - 1, latticeSize);
-                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx - Radius, latticeSize);
-
-                // Apaga o Antigo LSB
-                neighSum >>= 1;
-                if (mainRule.ResultBitForNeighSum[neighSum] == image[borderResultingBitInImageIdx])
-                {
-                    preImage[equivalentSensibleBitInPreImageIdx] = 0;
-                }
-                else
-                {
-                    preImage[equivalentSensibleBitInPreImageIdx] = 1;
-                }
-                // Coloca Novo Bit como MSB
-                neighSum |= (preImage[equivalentSensibleBitInPreImageIdx] << (DoubleRadius));
-            }
+            currentBitInPreImageIdx = Util.CircularIdx(preImageBorderLeftCellIdx + Radius - 1, latticeSize);
         }
         else
         {
-            int binaryCutMask = 0x7FFFFFFF >> (30 - (DoubleRadius));
-            int neighSum = 0;
-            int borderResultingBitInImageIdx = 0;
-            // Região de Borda (Contorno = 2*Raio)
-            int borderStartIdx = Util.CircularIdx((borderShift * execIdx), latticeSize);
-            int equivalentSensibleBitInPreImageIdx;
-            for (int borderStepIdx = 0; borderStepIdx < borderLength; ++borderStepIdx)
-            {
-                borderResultingBitInImageIdx = Util.CircularIdx(borderStartIdx + borderStepIdx, latticeSize);
-                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx + Radius, latticeSize);
-                if (borderRule.ResultBitForNeighSum[0] == 0)
-                {
-                    preImage[equivalentSensibleBitInPreImageIdx] = image[borderResultingBitInImageIdx];
-                }
-                else
-                {
-                    preImage[equivalentSensibleBitInPreImageIdx] = Util.OppositeBit(image[borderResultingBitInImageIdx]);
-                }
-                neighSum |= preImage[equivalentSensibleBitInPreImageIdx];
-                neighSum <<= 1;
-            }
-
-            // Região Principal
-            for (int mainStepIdx = latticeSize - borderLength - 1; mainStepIdx >= 0; mainStepIdx--)
-            {
-                borderResultingBitInImageIdx = Util.CircularIdx(borderResultingBitInImageIdx + 1, latticeSize);
-                equivalentSensibleBitInPreImageIdx = Util.CircularIdx(borderResultingBitInImageIdx + Radius, latticeSize);
-
-                // Apaga o Antigo LSB
-
-                if (mainRule.ResultBitForNeighSum[neighSum] == image[borderResultingBitInImageIdx])
-                {
-                    preImage[equivalentSensibleBitInPreImageIdx] = 0;
-                }
-                else
-                {
-                    preImage[equivalentSensibleBitInPreImageIdx] = 1;
-                }
-                // Coloca Novo Bit como novo LSB
-                neighSum |= (preImage[equivalentSensibleBitInPreImageIdx]);
-                // Corta Antigo MSB
-                neighSum <<= 1; neighSum &= binaryCutMask;
-            }
+            currentBitInPreImageIdx = Util.CircularIdx(preImageBorderLeftCellIdx + Radius, latticeSize);
         }
+
+        int neighSum = 0;
+        int toggleDirectionShift = toggleDirection == ToggleDirection.Left ? -1 : 1;
+        int BinaryCutMask = 0x7FFFFFFF >> 30 - DoubleRadius;
+        foreach (var _ in image)
+        {
+            var currentBitInImageIdx = Util.CircularIdx(currentBitInPreImageIdx + (toggleDirection == ToggleDirection.Left ? Radius : -Radius), latticeSize);
+
+            if (IsBorderCell(currentBitInImageIdx, preImageBorderLeftCellIdx, latticeSize))
+            {
+                preImage[currentBitInPreImageIdx] = borderRule.ResultBitForNeighSum[0] == 0
+                    ? image[currentBitInImageIdx]
+                    : Util.OppositeBit(image[currentBitInImageIdx]);
+            }
+            else
+            {
+                preImage[currentBitInPreImageIdx] = mainRule.ResultBitForNeighSum[neighSum] == image[currentBitInImageIdx]
+                    ? 0
+                    : 1;
+            }
+
+            if (toggleDirection == ToggleDirection.Left)
+            {
+                // Set new bit as MSB
+                neighSum |= preImage[currentBitInPreImageIdx] << DoubleRadius;
+                // Erase previous LSB
+                neighSum >>= 1;
+            }
+            else
+            {
+                // Set new bit as LSB
+                neighSum |= preImage[currentBitInPreImageIdx];
+                // Shift Left and Erase previous MSB
+                neighSum <<= 1; neighSum &= BinaryCutMask;
+            }
+
+            currentBitInPreImageIdx = Util.CircularIdx(currentBitInPreImageIdx + toggleDirectionShift, latticeSize);
+        }
+    }
+
+    private static bool IsBorderCell(int cellIdx, int borderStartIdx, int latticeSize)
+    {
+        var borderEndIdx = borderStartIdx + DoubleRadius;
+        if (borderEndIdx > latticeSize)
+        {
+            if (cellIdx >= borderStartIdx)
+            {
+                return true;
+            }
+            return cellIdx < borderEndIdx - latticeSize;
+        }
+        return (cellIdx >= borderStartIdx && cellIdx < borderEndIdx);
     }
 
     public static byte[] BlockDecrypt(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, byte[] finalLattice, int latticeSize)
