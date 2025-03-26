@@ -273,7 +273,7 @@ namespace CACrypto.Commons
             {
                 x = -1 * x;
                 x = x % window;
-                return window - x;
+                return (window - x) % window;
             }
         }
 
@@ -305,6 +305,99 @@ namespace CACrypto.Commons
         public static ToggleDirection GetRandomToggleDirection()
         {
             return (ToggleDirection)Enum.ToObject(typeof(ToggleDirection), Util.GetRandomNumber(0, 2));
+        }
+
+        public static IEnumerable<byte[]> GetLowEntropyByteArrays(int blockSize, int inputSamplesCount)
+        {
+            var lowEntropySet = new List<byte[]>(inputSamplesCount);
+
+            var arrayCountForGroup = inputSamplesCount / 8;
+
+            // Group 01 - Create Arrays with 000...0
+            for (int i = 0; i < arrayCountForGroup; i++)
+            {
+                var array = new byte[blockSize];
+                lowEntropySet.Add(array);
+            }
+
+            // Group 02 - Create Arrays with 111...1
+            for (int i = 0; i < arrayCountForGroup; i++)
+            {
+                var array = new byte[blockSize];
+                for (int j = 0; j < blockSize; j++)
+                {
+                    array[j] = 0xFF;
+                }
+                lowEntropySet.Add(array);
+            }
+
+            // Group 03 - Create Arrays with 0101...01
+            for (int i = 0; i < arrayCountForGroup; i++)
+            {
+                var array = new byte[blockSize];
+                for (int j = 0; j < blockSize; j++)
+                {
+                    array[j] = array[j] = 0x55;
+                }
+                lowEntropySet.Add(array);
+            }
+
+            // Group 04 - Create Arrays with 1010...10
+            for (int i = 0; i < arrayCountForGroup; i++)
+            {
+                var array = new byte[blockSize];
+                for (int j = 0; j < blockSize; j++)
+                {
+                    array[j] = array[j] = 0xAA;
+                }
+                lowEntropySet.Add(array);
+            }
+
+            // Group 05 - Create Arrays with alternating 00000000 and 11111111
+            for (int i = 0; i < arrayCountForGroup; i++)
+            {
+                var array = new byte[blockSize];
+                for (int j = 0; j < blockSize; j++)
+                {
+                    array[j] = (byte)(i % 2 == 0 ? 0x00 : 0xFF);
+                }
+                lowEntropySet.Add(array);
+            }
+
+            // Group 06 - Create Arrays with alternating 11111111 and 00000000
+            for (int i = 0; i < arrayCountForGroup; i++)
+            {
+                var array = new byte[blockSize];
+                for (int j = 0; j < blockSize; j++)
+                {
+                    array[j] = (byte)(i % 2 == 0 ? 0xFF : 0x00);
+                }
+                lowEntropySet.Add(array);
+            }
+
+            // Group 07 - Create Arrays with 000...0 and 111...1
+            for (int i = 0; i < arrayCountForGroup; i++)
+            {
+                var array = new byte[blockSize];
+                for (int j = 0; j < blockSize; j++)
+                {
+                    array[j] = (byte)(j < (blockSize / 2) ? 0x00 : 0xFF);
+                }
+                lowEntropySet.Add(array);
+            }
+
+            // Group 08 - Create Arrays with 111...1 and 000...0
+            for (int i = 0; i < arrayCountForGroup; i++)
+            {
+                var array = new byte[blockSize];
+                for (int j = 0; j < blockSize; j++)
+                {
+                    array[j] = (byte)(j < (blockSize / 2) ? 0xFF : 0x00);
+                }
+                lowEntropySet.Add(array);
+            }
+
+            return lowEntropySet;
         }
     }
 }

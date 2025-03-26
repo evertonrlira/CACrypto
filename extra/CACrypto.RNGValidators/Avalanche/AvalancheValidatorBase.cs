@@ -12,7 +12,9 @@ internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> c
     protected override string CompileValidationReport(CryptoProviderBase cryptoMethod)
     {
         var blockSize = Options.InputSampleSize;
-        var plaintextSet = Util.GetSecureRandomByteArrays(blockSize, Options.InputSamplesCount);
+        var randomPlaintextSet = Util.GetSecureRandomByteArrays(blockSize, Options.InputSamplesCount);
+        var preparedPlaintextSet = Util.GetLowEntropyByteArrays(blockSize, Options.InputSamplesCount);
+        IEnumerable<byte[]> plaintextSet = [..randomPlaintextSet, ..preparedPlaintextSet];
 
         var disturbanceSet = new ConcurrentBag<byte[]>();
         Parallel.ForEach(plaintextSet, originalPlaintext =>
@@ -49,6 +51,8 @@ internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> c
 
         var distribution = disturbanceResults.Select(Z => (float)Util.CountBits(Z) * 100.0F / (float)sequenceLengthInBits);
 
+        reportCompiler.AppendLine($"DISTURBED BITS PCT (MIN): {distribution.Min().ToString("N3", culture.NumberFormat)}");
+        reportCompiler.AppendLine($"DISTURBED BITS PCT (MAX): {distribution.Max().ToString("N3", culture.NumberFormat)}");
         var avgBits = distribution.Average(); avgBitsSum += avgBits;
         reportCompiler.AppendLine($"DISTURBED BITS PCT (AVG): {avgBits.ToString("N3", culture.NumberFormat)}");
         var avgBitsStdDev = Util.PopulationStandardDeviation(distribution); avgBitsStdDevSum += avgBitsStdDev;

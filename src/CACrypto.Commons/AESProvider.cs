@@ -35,12 +35,12 @@ public class AESProvider : CryptoProviderBase
         return stream.ToArray();
     }
 
-    private void WriteNewBinaryStream(MemoryStream stream, byte[] initialSeed, Span<byte> cryptoKey, byte[] IV, int sequenceSizeInBits)
+    private void WriteNewBinaryStream(MemoryStream stream, byte[] initialSeed, Span<byte> cryptoKey, byte[] IV, int sequenceSizeInBytes)
     {
         var bw = new BinaryWriter(stream);
         var defaultBlockSizeInBits = GetDefaultBlockSizeInBits();
         var defaultBlockSizeInBytes = GetDefaultBlockSizeInBytes();
-        var executions = sequenceSizeInBits / defaultBlockSizeInBits;
+        var executions = sequenceSizeInBytes / defaultBlockSizeInBytes;
 
         using Aes aesAlg = Aes.Create();
         aesAlg.Mode = CipherMode.CBC;
@@ -62,7 +62,7 @@ public class AESProvider : CryptoProviderBase
 
             for (int byteIdx = 0; byteIdx < defaultBlockSizeInBytes; ++byteIdx)
             {
-                bw.Write(ciphertext[byteIdx]);
+                bw.Write((byte)(ciphertext[byteIdx] ^ plaintext[byteIdx]));
             }
 
             Util.Swap(ref plaintext, ref ciphertext);
