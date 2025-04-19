@@ -19,7 +19,7 @@ namespace CACrypto.Commons
         {
             var keyBitsLength = 8 * keyBytes.Length;
             var binaryArray = ArrayPool<int>.Shared.Rent(keyBitsLength);
-            Util.ByteArrayToBinaryArray(keyBytes, binaryArray);
+            Util.ByteArrayToBinaryArray(keyBytes, binaryArray, keyBytes.Length);
             var isValid = Util.SpatialEntropyCalculusForBinary(binaryArray.AsSpan(0, keyBitsLength)) > MinimumValidKeyEntropy;
             ArrayPool<int>.Shared.Return(binaryArray, true);
             return isValid;

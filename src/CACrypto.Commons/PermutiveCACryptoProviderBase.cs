@@ -33,7 +33,7 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
         {
             var blockPlaintext = ArrayPool<byte>.Shared.Rent(blockSize);
             var blockCiphertext = ArrayPool<byte>.Shared.Rent(blockSize);
-            Buffer.BlockCopy(plainText, blockIdx * blockSize, blockPlaintext, 0, blockSize);
+            Util.CopyPlaintextIntoBlock(plainText, blockPlaintext, blockIdx, blockSize);
 
             EncryptAsSingleBlock(blockPlaintext, mainRules, borderRules, blockCiphertext, blockSize);
             Buffer.BlockCopy(blockCiphertext, 0, cipherText, blockIdx * blockSize, blockSize);
@@ -58,7 +58,7 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
         {
             var blockPlaintext = ArrayPool<byte>.Shared.Rent(blockSize);
             var blockCiphertext = ArrayPool<byte>.Shared.Rent(blockSize);
-            Buffer.BlockCopy(plaintext, blockIdx * blockSize, blockPlaintext, 0, blockSize);
+            Util.CopyPlaintextIntoBlock(plaintext, blockPlaintext, blockIdx, blockSize);
 
             for (int byteIdx = 0; byteIdx < blockSize; ++byteIdx)
             {
@@ -90,9 +90,11 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
         Parallel.For(0, blockCount, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, (counterIdx) =>
         {
             var blockPlaintext = ArrayPool<byte>.Shared.Rent(blockSize);
+            Array.Fill(blockPlaintext, Byte.MinValue);
             var blockCiphertext = ArrayPool<byte>.Shared.Rent(blockSize);
+            Array.Fill(blockCiphertext, Byte.MinValue);
 
-            BinaryPrimitives.WriteInt64BigEndian(blockPlaintext, counterIdx);
+            BinaryPrimitives.WriteIntPtrBigEndian(blockPlaintext.AsSpan(0, blockSize / 2), counterIdx);
             Buffer.BlockCopy(initializationVector, 0, blockPlaintext, blockSize / 2, blockSize / 2);
 
             EncryptAsSingleBlock(blockPlaintext, mainRules, borderRules, blockCiphertext, blockSize);
@@ -189,7 +191,11 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
     protected abstract PermutiveCACryptoKey GenerateRandomKey(int blockSizeInBytes, ToggleDirection toggleDirection);
     public PermutiveCACryptoKey GenerateRandomKey(int? blockSizeInBytes = null, ToggleDirection? toggleDirection = null)
     {
-        blockSizeInBytes ??= GetDefaultBlockSizeInBytes();
+        var defaultBlockSize = GetDefaultBlockSizeInBytes();
+        if (blockSizeInBytes is null || blockSizeInBytes.Value < defaultBlockSize)
+        {
+            blockSizeInBytes = defaultBlockSize;
+        }
         toggleDirection ??= Util.GetRandomToggleDirection();
         var key = GenerateRandomKey(blockSizeInBytes.Value, toggleDirection.Value);
         while (!key.IsValid())
@@ -249,15 +255,21 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
         var bw = new BinaryWriter(stream);
 
         var defaultBlockSizeInBytes = GetDefaultBlockSizeInBytes();
+        var bytesToCopy = defaultBlockSizeInBytes;
         var plaintext = ArrayPool<byte>.Shared.Rent(defaultBlockSizeInBytes);
         Util.FillArrayWithRandomData(plaintext);
         var ciphertext = ArrayPool<byte>.Shared.Rent(defaultBlockSizeInBytes);
-        var executions = sequenceSizeInBytes / defaultBlockSizeInBytes;
+        var executions = (int)Math.Ceiling((decimal)sequenceSizeInBytes / defaultBlockSizeInBytes);
         for (int executionIdx = 0; executionIdx < executions; ++executionIdx)
         {
             EncryptAsSingleBlock(plaintext, mainRules, borderRules, ciphertext, defaultBlockSizeInBytes);
 
-            for (int byteIdx = 0; byteIdx < defaultBlockSizeInBytes; ++byteIdx)
+            if (executionIdx == executions - 1)
+            {
+                bytesToCopy = sequenceSizeInBytes - (int)stream.Length;
+            }
+
+            for (int byteIdx = 0; byteIdx < bytesToCopy; ++byteIdx)
             {
                 bw.Write((byte)(ciphertext[byteIdx] ^ plaintext[byteIdx]));
             }
@@ -270,5 +282,21 @@ public abstract class PermutiveCACryptoProviderBase(string algorithmName) : Cryp
         ArrayPool<byte>.Shared.Return(ciphertext);
 
         return stream.ToArray();
+    }
+
+    public byte[] GenerateRandomIV(int? textSizeInBytes = null)
+    {
+        var defaultBlockSize = GetDefaultBlockSizeInBytes();
+        byte[] initializationVector;
+        if (textSizeInBytes is null || textSizeInBytes.Value < defaultBlockSize)
+        {
+            initializationVector = new byte[defaultBlockSize];
+        }
+        else
+        {
+            initializationVector = new byte[(int)textSizeInBytes.Value];
+        }
+        Util.FillArrayWithRandomData(initializationVector);
+        return initializationVector;
     }
 }

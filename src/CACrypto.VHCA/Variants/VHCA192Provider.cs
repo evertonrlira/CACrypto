@@ -1,54 +1,53 @@
 ﻿using CACrypto.Commons;
 
-namespace CACrypto.VHCA;
+namespace CACrypto.VHCA.Variants;
 
-public class VHCAProvider : PermutiveCACryptoProviderBase
+public class VHCA192Provider : VHCAProvider
 {
-    public VHCAProvider() : base(algorithmName: VHCACrypto.Name) { }
-    public VHCAProvider(string algorithmName) : base(algorithmName) { }
+    public VHCA192Provider() : base(algorithmName: VHCA192Crypto.Name) { }
 
     protected override PermutiveCACryptoKey GenerateRandomKey(int blockSizeInBytes, ToggleDirection toggleDirection)
     {
-        return VHCAKey.GenerateRandomKey(blockSizeInBytes, toggleDirection);
+        return VHCA192Key.GenerateRandomKey(blockSizeInBytes, toggleDirection);
     }
 
     public override void EncryptAsSingleBlock(byte[] initialLattice, Rule[] mainRules, Rule[] borderRules, byte[] finalLattice, int latticeSize)
     {
-        VHCACrypto.BlockEncrypt(initialLattice, mainRules, borderRules, finalLattice, latticeSize);
+        VHCA192Crypto.BlockEncrypt(initialLattice, mainRules, borderRules, finalLattice, latticeSize);
     }
 
     public override void DecryptAsSingleBlock(byte[] cipherText, Rule[] mainRules, Rule[] borderRules, byte[] plaintext, int blockSize)
     {
-        VHCACrypto.BlockDecrypt(cipherText, mainRules, borderRules, plaintext, blockSize);
+        VHCA192Crypto.BlockDecrypt(cipherText, mainRules, borderRules, plaintext, blockSize);
     }
 
     public override Rule[] DeriveMainRulesFromKey(PermutiveCACryptoKey cryptoKey)
     {
-        return VHCACrypto.DeriveMainRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
+        return VHCA192Crypto.DeriveMainRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
     }
 
     public override Rule[] DeriveBorderRulesFromKey(PermutiveCACryptoKey cryptoKey)
     {
-        return VHCACrypto.DeriveBorderRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
+        return VHCA192Crypto.DeriveBorderRulesFromKey(cryptoKey.Bits, cryptoKey.Direction);
     }
 
     public override int GetDefaultBlockSizeInBits()
     {
-        return VHCACrypto.DefaultBlockSizeInBits;
+        return VHCA192Crypto.DefaultBlockSizeInBits;
     }
 
     public override int GetDefaultBlockSizeInBytes()
     {
-        return VHCACrypto.DefaultBlockSizeInBytes;
+        return VHCA192Crypto.DefaultBlockSizeInBytes;
     }
 
     protected override PermutiveCACryptoKey BuildKey(byte[] keyBytes, ToggleDirection toggleDirection)
     {
-        return new VHCAKey(keyBytes, toggleDirection);
+        return new VHCA192Key(keyBytes, toggleDirection);
     }
 
     public override int GetDefaultKeySizeInBytes()
     {
-        return VHCACrypto.KeySizeInBytes;
+        return VHCA192Crypto.KeySizeInBytes;
     }
 }

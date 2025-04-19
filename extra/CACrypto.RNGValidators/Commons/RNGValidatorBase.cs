@@ -3,7 +3,12 @@
 namespace CACrypto.RNGValidators.Commons;
 
 internal abstract class RNGValidatorBase(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? options = null)
-    : CryptoValidatorBase(cryptoMethods, options)
+    : CryptoValidatorBase(
+        cryptoMethods.Select(cryptoMethod => new CryptoValidatorInput
+        {
+            CryptoMethod = cryptoMethod,
+            Options = options ?? GetDefaultValidatorOptions()
+        }))
 {
     protected string GetIndividualReportFilename(string inputFileName)
     {
@@ -43,7 +48,8 @@ internal abstract class RNGValidatorBase(IEnumerable<CryptoProviderBase> cryptoM
             }
             catch (Exception ex)
             {
-                if (Options.WriteToConsole)
+                // TODO: Refactor, due to simply using the first one
+                if (ValidatorInputs.First().Options.WriteToConsole)
                 {
                     Console.WriteLine("[Warning] Error when processing: \"{0}\"", ex.Message);
                 }
@@ -57,22 +63,25 @@ internal abstract class RNGValidatorBase(IEnumerable<CryptoProviderBase> cryptoM
         return individualReportFiles;
     }
 
-    protected override string CompileValidationReport(CryptoProviderBase cryptoMethod)
+    protected override string CompileValidationReport(CryptoValidatorInput validatorInput)
     {
-        var inputfiles = cryptoMethod.GenerateBinaryFiles(Options.InputSampleSize, Options.InputSamplesCount, Options.DataDirectoryPath);
+        var inputfiles = validatorInput.CryptoMethod.GenerateBinaryFiles(
+            validatorInput.Options.InputSampleSize,
+            validatorInput.Options.InputSamplesCount,
+            validatorInput.Options.DataDirectoryPath);
         var individualReportFiles = GenerateIndividualValidationReports(inputfiles);
-        while (individualReportFiles.Count < Options.InputSamplesCount)
+        while (individualReportFiles.Count < validatorInput.Options.InputSamplesCount)
         {
-            inputfiles = cryptoMethod.GenerateBinaryFiles(Options.InputSampleSize, Options.InputSamplesCount, Options.DataDirectoryPath);
+            inputfiles = validatorInput.CryptoMethod.GenerateBinaryFiles(validatorInput.Options.InputSampleSize, validatorInput.Options.InputSamplesCount, validatorInput.Options.DataDirectoryPath);
             individualReportFiles = GenerateIndividualValidationReports(inputfiles);
         }
 
-        return CompileValidationReport(cryptoMethod, individualReportFiles);
+        return CompileValidationReport(validatorInput.CryptoMethod, individualReportFiles);
     }
 
     protected abstract string CompileValidationReport(CryptoProviderBase cryptoMethod, IEnumerable<string> individualReportFiles);
 
-    protected override ValidatorOptions GetDefaultValidatorOptions()
+    protected static ValidatorOptions GetDefaultValidatorOptions()
     {
         return new ValidatorOptions
         {

@@ -1,4 +1,5 @@
 ﻿using MersenneTwister;
+using System.Security.Cryptography;
 
 namespace CACrypto.Commons
 {
@@ -162,11 +163,9 @@ namespace CACrypto.Commons
             Randoms.FastestInt32.NextBytes(array);
         }
 
-        public static void ByteArrayToBinaryArray(ReadOnlySpan<byte> byteArray, int[] outputBinaryArray)
+        public static void ByteArrayToBinaryArray(ReadOnlySpan<byte> byteArray, int[] outputBinaryArray, int byteCount)
         {
-            int length = byteArray.Length;
-
-            for (int byteIdx = 0; byteIdx < length; byteIdx++)
+            for (int byteIdx = 0; byteIdx < byteCount; byteIdx++)
             {
                 for (int bitIdx = 0; bitIdx < 8; bitIdx++)
                 {
@@ -178,7 +177,7 @@ namespace CACrypto.Commons
         public static int[] ByteSpanToBinaryArray(Span<byte> bytes)
         {
             var binaryArray = new int[8 * bytes.Length];
-            ByteArrayToBinaryArray(bytes, binaryArray);
+            ByteArrayToBinaryArray(bytes, binaryArray, bytes.Length);
             return binaryArray;
         }
 
@@ -196,7 +195,7 @@ namespace CACrypto.Commons
                     if (input[8 * byteIdx + bitIdx] == 1)
                     {
                         byteValue |= BytePosValues[bitIdx];
-                    }                    
+                    }
                 }
                 output[byteIdx] = (byte)byteValue;
             }
@@ -375,7 +374,7 @@ namespace CACrypto.Commons
                 lowEntropySet.Add(array);
             }
 
-            // Group 07 - Create Arrays with 000...0 and 111...1
+            // Group 07 - Create Arrays with 000...0111...1
             for (int i = 0; i < arrayCountForGroup; i++)
             {
                 var array = new byte[blockSize];
@@ -386,7 +385,7 @@ namespace CACrypto.Commons
                 lowEntropySet.Add(array);
             }
 
-            // Group 08 - Create Arrays with 111...1 and 000...0
+            // Group 08 - Create Arrays with 111...1000...0
             for (int i = 0; i < arrayCountForGroup; i++)
             {
                 var array = new byte[blockSize];
@@ -398,6 +397,21 @@ namespace CACrypto.Commons
             }
 
             return lowEntropySet;
+        }
+
+        internal static void CopyPlaintextIntoBlock(byte[] plainText, byte[] blockPlaintext, int blockIdx, int blockSize)
+        {
+            int copyAmount;
+            if (plainText.Length < blockPlaintext.Length)
+            {
+                CryptographicOperations.ZeroMemory(blockPlaintext);
+                copyAmount = plainText.Length;
+            }
+            else
+            {
+                copyAmount = blockSize;
+            }
+            Buffer.BlockCopy(plainText, blockIdx * blockSize, blockPlaintext, 0, copyAmount);
         }
     }
 }

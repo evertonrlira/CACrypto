@@ -11,7 +11,6 @@ public class VHCACrypto
     public const int KeySizeInBytes = 48;
     public const int DefaultBlockSizeInBytes = 16;
     public const int DefaultBlockSizeInBits = 128;
-    public const int RuleLength = 512;
     public const int KeyBitsToRuleFactor = 3; // 3 bits are needed to represent 1 rule
     private static readonly int Radius = 1;
     private static readonly int DoubleRadius = 2;
@@ -64,7 +63,7 @@ public class VHCACrypto
         int latticeLengthInBits = 8 * latticeSize;
         var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
-        Util.ByteArrayToBinaryArray(initialLattice, preImage);
+        Util.ByteArrayToBinaryArray(initialLattice, preImage, latticeSize);
 
         var toggleDirection = mainRules[0].IsLeftSensible ? ToggleDirection.Left : ToggleDirection.Right;
         var borderLength = DoubleRadius;
@@ -73,6 +72,7 @@ public class VHCACrypto
         for (int iterationIdx = 0; iterationIdx < latticeLengthInBits; ++iterationIdx)
         {
             SequentialEvolveLattice(preImage, mainRules, borderRules, borderLeftmostCellIdx, image, latticeLengthInBits);
+            // ParallelEvolveLattice(preImage, mainRules, borderRules, borderLeftmostCellIdx, image, latticeLengthInBits);
 
             // Prepare for Next Iteration
             Util.Swap(ref image, ref preImage);
@@ -115,9 +115,9 @@ public class VHCACrypto
         return image;
     }
 
-    private static int[] ParallelEvolveLattice(int[] preImage, Rule[] mainRules, Rule[] borderRules, int imageBorderLeftCellIdx, int[] image, int latticeSize)
+    private static int[] ParallelEvolveLattice(int[] preImage, Rule[] mainRules, Rule[] borderRules, int imageBorderLeftCellIdx, int[] image, int latticeSize, int? threadCount = null)
     {
-        var slices = Environment.ProcessorCount;
+        var slices = threadCount ?? Environment.ProcessorCount;
         var sliceSize = latticeSize / slices;
 
         Parallel.For(0, slices, (sliceIdx) =>
@@ -143,7 +143,7 @@ public class VHCACrypto
         int latticeLengthInBits = 8 * latticeSize;
         var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
-        Util.ByteArrayToBinaryArray(initialLattice, image);
+        Util.ByteArrayToBinaryArray(initialLattice, image, latticeSize);
 
         var toggleDirection = mainRules[0].IsLeftSensible ? ToggleDirection.Left : ToggleDirection.Right;
         var borderLength = DoubleRadius;

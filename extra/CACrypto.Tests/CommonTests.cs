@@ -32,14 +32,13 @@ internal static class CommonTests
         // Arrange
         var originalText = new byte[textSizeInBytes];
         Util.FillArrayWithRandomData(originalText);
-        var cryptoKey = cryptoMethod.GenerateRandomKey(textSizeInBytes);
-        var initializationVector = new byte[textSizeInBytes];
-        Util.FillArrayWithRandomData(initializationVector);
+        var cryptoKey = cryptoMethod.GenerateRandomKey();
+        var initializationVector = cryptoMethod.GenerateRandomIV();
         // Act
         var cipherText = cryptoMethod.Encrypt(originalText, cryptoKey, initializationVector, operationMode);
         cipherText.Should().NotEqual(originalText);
         var recoveredText = cryptoMethod.Decrypt(cipherText, cryptoKey, initializationVector, operationMode);
         // Assert
-        recoveredText.Should().Equal(originalText);
+        recoveredText.Take(originalText.Length).Should().Equal(originalText);
     }
 }

@@ -10,13 +10,12 @@ public class AESProvider : CryptoProviderBase
 
     public AESProvider() : base(methodName: "AES") { }
 
-    static void EncryptStringToBytes_Aes(byte[] plaintext, ICryptoTransform encryptor, byte[] ciphertext, int blockSize)
+    static void PerformCryptoTransformation(byte[] input, ICryptoTransform transformOperation, byte[] output, int blockSize)
     {
-        // Create the streams used for encryption.
-        using MemoryStream msEncrypt = new MemoryStream(ciphertext);
-        using CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write);
-        csEncrypt.Write(plaintext, 0, blockSize);
-        csEncrypt.FlushFinalBlock();
+        using MemoryStream ms = new(output);
+        using CryptoStream cs = new(ms, transformOperation, CryptoStreamMode.Write);
+        cs.Write(input, 0, blockSize);
+        cs.FlushFinalBlock();
     }
 
     public override byte[] GeneratePseudoRandomSequence(int sequenceSizeInBytes)
@@ -58,7 +57,7 @@ public class AESProvider : CryptoProviderBase
         var ciphertext = ArrayPool<byte>.Shared.Rent(defaultBlockSizeInBytes);
         for (int executionIdx = 0; executionIdx < executions; ++executionIdx)
         {
-            EncryptStringToBytes_Aes(plaintext, encryptor, ciphertext, defaultBlockSizeInBytes);
+            PerformCryptoTransformation(plaintext, encryptor, ciphertext, defaultBlockSizeInBytes);
 
             for (int byteIdx = 0; byteIdx < defaultBlockSizeInBytes; ++byteIdx)
             {
@@ -109,12 +108,30 @@ public class AESProvider : CryptoProviderBase
         aesAlg.BlockSize = defaultBlockSizeInBits;
         aesAlg.FeedbackSize = defaultBlockSizeInBits;
         aesAlg.Padding = PaddingMode.Zeros;
-        aesAlg.Key = key.Bytes.ToArray();
+        aesAlg.Key = key.Bytes;
         aesAlg.IV = new byte[defaultBlockSizeInBytes];
 
         // Create an encryptor to perform the stream transform.
         ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+        PerformCryptoTransformation(plaintext, encryptor, ciphertext, blockSize);
+    }
 
-        EncryptStringToBytes_Aes(plaintext, encryptor, ciphertext, blockSize);
+    public void DecryptAsSingleBlock(byte[] ciphertext, CryptoKey key, byte[] plaintext, int blockSize)
+    {
+        var defaultBlockSizeInBits = GetDefaultBlockSizeInBits();
+        var defaultBlockSizeInBytes = GetDefaultBlockSizeInBytes();
+
+        using Aes aesAlg = Aes.Create();
+        aesAlg.Mode = CipherMode.CBC;
+        aesAlg.KeySize = defaultBlockSizeInBits;
+        aesAlg.BlockSize = defaultBlockSizeInBits;
+        aesAlg.FeedbackSize = defaultBlockSizeInBits;
+        aesAlg.Padding = PaddingMode.Zeros;
+        aesAlg.Key = key.Bytes;
+        aesAlg.IV = new byte[defaultBlockSizeInBytes];
+
+        // Create a decryptor to perform the stream transform.
+        ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+        PerformCryptoTransformation(ciphertext, decryptor, plaintext, blockSize);
     }
 }

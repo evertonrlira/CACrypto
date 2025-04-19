@@ -1,14 +1,13 @@
 ﻿using CACrypto.Commons;
-using CACrypto.RNGValidators.Commons;
 
 namespace CACrypto.RNGValidators.Avalanche;
 
-internal class PlaintextAvalancheValidator(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? opt = null)
-    : AvalancheValidatorBase(cryptoMethods, opt)
+internal class PlaintextAvalancheValidator(IEnumerable<CryptoProviderBase> cryptoMethods)
+    : AvalancheValidatorBase(cryptoMethods)
 {
     protected override string GetValidatorName() => "PLAINTEXT_AVALANCHE";
 
-    public PlaintextAvalancheValidator(CryptoProviderBase cryptoMethod, ValidatorOptions? opt = null) : this([cryptoMethod], opt) { }
+    public PlaintextAvalancheValidator(CryptoProviderBase cryptoMethod) : this([cryptoMethod]) { }
 
     protected override CryptoKey GetNextKey(CryptoKey originalKey)
     {

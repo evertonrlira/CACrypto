@@ -6,15 +6,21 @@ using System.Text;
 
 namespace CACrypto.RNGValidators.Avalanche;
 
-internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> cryptoMethods, ValidatorOptions? opt)
-    : CryptoValidatorBase(cryptoMethods, opt)
+internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> cryptoMethods)
+    : CryptoValidatorBase(
+        cryptoMethods.Select(cryptoMethod => new CryptoValidatorInput
+        {
+            CryptoMethod = cryptoMethod,
+            Options = GetDefaultValidatorOptions(cryptoMethod)
+        }))
 {
-    protected override string CompileValidationReport(CryptoProviderBase cryptoMethod)
+
+    protected override string CompileValidationReport(CryptoValidatorInput validatorInput)
     {
-        var blockSize = Options.InputSampleSize;
-        var randomPlaintextSet = Util.GetSecureRandomByteArrays(blockSize, Options.InputSamplesCount);
-        var preparedPlaintextSet = Util.GetLowEntropyByteArrays(blockSize, Options.InputSamplesCount);
-        IEnumerable<byte[]> plaintextSet = [..randomPlaintextSet, ..preparedPlaintextSet];
+        var blockSize = validatorInput.Options.InputSampleSize;
+        var randomPlaintextSet = Util.GetSecureRandomByteArrays(blockSize, validatorInput.Options.InputSamplesCount);
+        var preparedPlaintextSet = Util.GetLowEntropyByteArrays(blockSize, validatorInput.Options.InputSamplesCount);
+        IEnumerable<byte[]> plaintextSet = [.. randomPlaintextSet, .. preparedPlaintextSet];
 
         var disturbanceSet = new ConcurrentBag<byte[]>();
         Parallel.ForEach(plaintextSet, originalPlaintext =>
@@ -22,15 +28,15 @@ internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> c
             var originalCiphertext = new byte[blockSize];
             var disturbedCiphertext = new byte[blockSize];
 
-            var originalKey = cryptoMethod.GenerateRandomKey();
-            cryptoMethod.EncryptAsSingleBlock(originalPlaintext, originalKey, originalCiphertext, blockSize);
+            var originalKey = validatorInput.CryptoMethod.GenerateRandomKey();
+            validatorInput.CryptoMethod.EncryptAsSingleBlock(originalPlaintext, originalKey, originalCiphertext, blockSize);
             var nextPlaintext = GetNextPlaintext(originalPlaintext);
             var nextKey = GetNextKey(originalKey);
-            cryptoMethod.EncryptAsSingleBlock(nextPlaintext, nextKey, disturbedCiphertext, blockSize);
+            validatorInput.CryptoMethod.EncryptAsSingleBlock(nextPlaintext, nextKey, disturbedCiphertext, blockSize);
             var disturbance = Util.XOR(originalCiphertext, disturbedCiphertext, blockSize);
             disturbanceSet.Add(disturbance);
         });
-        return CompileValidationReport(cryptoMethod, disturbanceSet);
+        return CompileValidationReport(validatorInput.CryptoMethod, disturbanceSet);
     }
 
     protected abstract CryptoKey GetNextKey(CryptoKey originalKey);
@@ -45,7 +51,8 @@ internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> c
         reportCompiler.AppendLine($"SUCCESS RATES ON {GetValidatorName()}");
         reportCompiler.AppendLine($"INPUT COUNT: {disturbanceResults.Count()}");
 
-        var sequenceLengthInBits = 8 * disturbanceResults.First().Length;
+        var sequenceLengthInBytes = disturbanceResults.First().Length;
+        var sequenceLengthInBits = 8 * sequenceLengthInBytes;
 
         double avgBitsSum = 0.0D, avgBitsStdDevSum = 0.0D, entrophyMinSum = 0.0D, entrophyMaxSum = 0.0D, entrophyAvgSum = 0.0D, entrophyStdDevSum = 0.0D;
 
@@ -62,7 +69,7 @@ internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> c
         foreach (var disturbanceArrayBytes in disturbanceResults)
         {
             var disturbanceArrayBits = ArrayPool<int>.Shared.Rent(sequenceLengthInBits);
-            Util.ByteArrayToBinaryArray(disturbanceArrayBytes, disturbanceArrayBits);
+            Util.ByteArrayToBinaryArray(disturbanceArrayBytes, disturbanceArrayBits, sequenceLengthInBytes);
             var entropy = Util.SpatialEntropyCalculusForBinary(disturbanceArrayBits.AsSpan(0, sequenceLengthInBits));
             entropySet.Add(entropy);
             ArrayPool<int>.Shared.Return(disturbanceArrayBits, true);
@@ -85,12 +92,13 @@ internal abstract class AvalancheValidatorBase(IEnumerable<CryptoProviderBase> c
         return Environment.ProcessorCount;
     }
 
-    protected override ValidatorOptions GetDefaultValidatorOptions()
+    protected static ValidatorOptions GetDefaultValidatorOptions(CryptoProviderBase cryptoMethod)
     {
+        var defaultBlockSize = cryptoMethod.GetDefaultBlockSizeInBytes();
         return new ValidatorOptions
         {
-            InputSampleSize = SampleSize.DefaultBlockSize,
-            InputSamplesCount = (8 * SampleSize.DefaultBlockSize) * (8 * SampleSize.DefaultBlockSize)
+            InputSampleSize = defaultBlockSize,
+            InputSamplesCount = (8 * defaultBlockSize) * (8 * defaultBlockSize)
         };
     }
 }

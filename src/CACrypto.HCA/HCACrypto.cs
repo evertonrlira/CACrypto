@@ -36,7 +36,7 @@ public class HCACrypto
         int latticeLengthInBits = 8 * blockSize;
         var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
-        Util.ByteArrayToBinaryArray(initialLattice, image);
+        Util.ByteArrayToBinaryArray(initialLattice, image, blockSize);
 
         var toggleDirection = mainRules[0].IsLeftSensible ? ToggleDirection.Left : ToggleDirection.Right;
         int borderLeftCellIdx = 0;
@@ -129,7 +129,7 @@ public class HCACrypto
         int latticeLengthInBits = 8 * latticeSize;
         var image = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
         var preImage = ArrayPool<int>.Shared.Rent(latticeLengthInBits);
-        Util.ByteArrayToBinaryArray(initialLattice, preImage);
+        Util.ByteArrayToBinaryArray(initialLattice, preImage, latticeSize);
 
         var toggleDirection = mainRules[0].IsLeftSensible ? ToggleDirection.Left : ToggleDirection.Right;
         int borderShift = toggleDirection == ToggleDirection.Left ? DoubleRadius : -DoubleRadius;
