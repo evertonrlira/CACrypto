@@ -77,12 +77,6 @@ public class MethodsBenchmarker
     }
 
     [Benchmark]
-    public void Generate1MBSequenceUsingAES()
-    {
-        _aes.GeneratePseudoRandomSequence(SampleSize.OneMegaByte);
-    }
-
-    [Benchmark]
     public void EncryptBlockUsingHCA()
     {
         _hca.EncryptAsSingleBlock(_inputBlockBytes, _hcaMainRulesForDefaultBlockSize, _hcaBorderRulesForDefaultBlockSize, _outputBlockBytes, _inputBlockBytes.Length);
@@ -97,13 +91,13 @@ public class MethodsBenchmarker
     [Benchmark]
     public void EncryptTextUsingHCA()
     {
-        _hca.EncryptAsSingleBlock(_inputTextBytes, _hcaMainRulesForInputText, _hcaBorderRulesForInputText, _outputBytes, _inputBytes.Length);
+        _hca.EncryptAsSingleBlock(_inputTextBytes, _hcaMainRulesForInputText, _hcaBorderRulesForInputText, _outputTextBytes, _inputTextBytes.Length);
     }
 
     [Benchmark]
     public void DecryptTextUsingHCA()
     {
-        _hca.DecryptAsSingleBlock(_inputTextBytes, _hcaMainRulesForInputText, _hcaBorderRulesForInputText, _outputBytes, _inputBytes.Length);
+        _hca.DecryptAsSingleBlock(_inputTextBytes, _hcaMainRulesForInputText, _hcaBorderRulesForInputText, _outputTextBytes, _inputTextBytes.Length);
     }
 
     [Benchmark]

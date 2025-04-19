@@ -1,9 +1,9 @@
 ﻿namespace CACrypto.VHCA.Variants;
 
-public class VHCA256Crypto : VHCACrypto
+public class VHCA256Crypto : VHCACryptoBase
 {
-    public new const string Name = "VHCA256";
-    public new const int KeySizeInBytes = 96;
-    public new const int DefaultBlockSizeInBytes = 32;
-    public new const int DefaultBlockSizeInBits = 256;
+    public const string Name = "VHCA256";
+    public const int DefaultBlockSizeInBytes = 32;
+
+    public VHCA256Crypto() : base(Name, DefaultBlockSizeInBytes) { }
 }
